@@ -1,0 +1,11 @@
+
+
+#Folder
+archive
+outputs
+
+
+#Files
+*.DS_Store
+*._
+._.gitignore
