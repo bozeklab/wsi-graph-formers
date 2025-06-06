@@ -1,0 +1,8 @@
+defaults:
+  - _self_
+
+json_path: "path/to/default.json"
+output_path: "graph.gpickle"
+radius: 50.0
+max_nodes: 1000
+figsize: [10, 10]

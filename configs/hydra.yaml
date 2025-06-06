@@ -1,0 +1,6 @@
+
+hydra:
+
+  run:
+
+    dir: .
