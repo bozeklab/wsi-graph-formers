@@ -96,6 +96,10 @@ def build_graph_from_json(json_path, radius=50):
 
     centroids = np.array(centroids)
     features = np.array(features)
+     
+    #for reproducibility - but can take some time to run
+    ids = np.argsort(ids)
+
 
     tree = cKDTree(centroids)
     pairs = tree.query_pairs(r=radius)
@@ -104,6 +108,7 @@ def build_graph_from_json(json_path, radius=50):
     for i, node_id in enumerate(ids):
         G.add_node(node_id,
                    cell_type=cell_types[i],
+                   centroid=tuple(centroids[i]),  
                    area=features[i, 0],
                    perimeter=features[i, 1],
                    eccentricity=features[i, 2],
@@ -111,6 +116,7 @@ def build_graph_from_json(json_path, radius=50):
                    major_axis_length=features[i, 4],
                    minor_axis_length=features[i, 5],
                    extent=features[i, 6])
+
 
     for i, j in tqdm(pairs, desc="Adding edges"):
         G.add_edge(ids[i], ids[j])
