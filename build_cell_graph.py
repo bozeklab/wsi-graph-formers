@@ -2,6 +2,9 @@
 Lucas Sancéré 2025
 """
 
+
+import os
+import glob
 import json
 import numpy as np
 import networkx as nx
@@ -15,9 +18,26 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from configs.schema import GraphConfig
 import pickle
+import time 
+from contextlib import contextmanager
 
 cs = ConfigStore.instance()
 cs.store(name="graph_config", node=GraphConfig)
+
+
+
+@contextmanager
+def timing_block(timing=False, label="Elapsed Time"):
+    if timing:
+        start_time = time.perf_counter()
+        yield
+        end_time = time.perf_counter()
+        elapsed = end_time - start_time
+        minutes = int(elapsed // 60)
+        seconds = elapsed % 60
+        print(f"{label}: {minutes} min {seconds:.2f} sec")
+    else:
+        yield
 
 
 
@@ -56,7 +76,7 @@ def extract_morph_features(contour):
 
 
 
-def build_graph_from_json(json_path, radius=50):
+def build_graph_from_json(json_path, radius=50, timing=False):
     """
     Build a cell graph from JSON input using radius-based neighbor pruning.
 
@@ -72,11 +92,13 @@ def build_graph_from_json(json_path, radius=50):
     G : networkx.Graph
         Graph with nodes containing morphology and type information.
     """
-    with open(json_path, 'r') as f:
-        data = json.load(f)
+    with timing_block(timing, "Reading JSON"):
+        with open(json_path, 'r') as f:
+            data = json.load(f)
 
     cells = data.get("cells", data)
     ids, centroids, features, cell_types = [], [], [], []
+
 
     for cell_id, cell_data in tqdm(cells.items(), desc="Parsing cells"):
         try:
@@ -99,7 +121,6 @@ def build_graph_from_json(json_path, radius=50):
      
     #for reproducibility - but can take some time to run
     ids = np.argsort(ids)
-
 
     tree = cKDTree(centroids)
     pairs = tree.query_pairs(r=radius)
@@ -125,7 +146,7 @@ def build_graph_from_json(json_path, radius=50):
 
 
 
-def save_graph(graph, output_path):
+def save_graph(graph, output_path, timing=False):
     """
     Save the constructed graph to a file.
 
@@ -137,18 +158,27 @@ def save_graph(graph, output_path):
         Path to the output .gpickle file.
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "wb") as f:
-       pickle.dump(graph, f)
+    with timing_block(timing, "Saving graph"):
+        with open(output_path, "wb") as f:
+            pickle.dump(graph, f)
     print(f"Graph saved to: {output_path}")
-
 
 
 
 
 @hydra.main(config_path="configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
-    G = build_graph_from_json(cfg.json_path, radius=cfg.radius)
-    save_graph(G, cfg.output_path)
+
+    jsonpaths = os.path.join(cfg.json_folder, '*.json')
+    jsonpaths = glob.glob(jsonpaths)
+    for filepath in tqdm(jsonpaths):
+        if os.path.exists(filepath):
+            json_path = filepath
+            filename = str(os.path.split(filepath)[1])
+            output_path = cfg.output_folder + cfg.output_corename + filename 
+
+            G = build_graph_from_json(json_path, radius=cfg.radius, timing=cfg.timing)
+            save_graph(G, output_path,  timing=cfg.timing)
 
 if __name__ == "__main__":
     main()

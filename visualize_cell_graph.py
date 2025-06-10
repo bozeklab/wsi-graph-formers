@@ -14,6 +14,18 @@ import pickle
 cs = ConfigStore.instance()
 cs.store(name="graph_config", node=GraphConfig)
 
+COLORS = [
+    (0, 0, 0),       # 0 - Background (white)  
+    (1.0, 1.0, 0.0),       # 1 - Granulocyte (yellow)  
+    (0.078, 0.914, 0.078), # 2 - Lymphocyte (green)
+    (0.055, 0.949, 0.965), # 3 - Plasma (light blue)
+    (0.063, 0.020, 0.945), # 4 - Stroma (dark blue)
+    (1.0, 0.0039, 0.0),    # 5 - Tumor (orange)  
+    (1.0, 0.690, 0.067)    # 6 - Epithelial or fallback (gray)
+]
+
+
+
 
 def plot_graph(G, max_nodes=1000, figsize=(10, 10)):
     """
@@ -29,13 +41,15 @@ def plot_graph(G, max_nodes=1000, figsize=(10, 10)):
         Size of the matplotlib figure in inches.
     """
     num_nodes = G.number_of_nodes()
+    num_edges = G.number_of_edges()
 
     if num_nodes == 0:
         print("Warning: Graph is empty. Nothing to visualize.")
         return
 
     if num_nodes > max_nodes:
-        print(f"Graph has {num_nodes} nodes. Sampling {max_nodes}.")
+        print(f"Graph has {num_nodes} nodes and {num_edges} edges. \n" 
+        f"Sampling {max_nodes} nodes.")
 
     # Get largest connected component
     largest_cc = max(nx.connected_components(G), key=len)
@@ -49,7 +63,13 @@ def plot_graph(G, max_nodes=1000, figsize=(10, 10)):
 
     # Get node positions (based on centroids) and colors (cell type)
     pos = {n: G.nodes[n].get("centroid", (0, 0)) for n in G.nodes}
-    colors = [G.nodes[n].get("cell_type", 0) for n in G.nodes]
+    colors = [
+        COLORS[G.nodes[n].get("cell_type", 0)]
+        if G.nodes[n].get("cell_type", 0) < len(COLORS)
+        else COLORS[-1]
+        for n in G.nodes
+    ]
+
 
     plt.figure(figsize=figsize)
     nx.draw(
@@ -58,7 +78,7 @@ def plot_graph(G, max_nodes=1000, figsize=(10, 10)):
         node_color=colors,
         node_size=10,
         cmap="tab10",
-        edge_color="gray",
+        edge_color="grey",
         linewidths=0.1,
     )
     plt.title("Cell Graph (colored by cell type)")
@@ -69,7 +89,7 @@ def plot_graph(G, max_nodes=1000, figsize=(10, 10)):
 
 @hydra.main(config_path="configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
-    with open(cfg.output_path, "rb") as f:
+    with open(cfg.visualization_path, "rb") as f:
         G = pickle.load(f)
 
     figsize = tuple(cfg.figsize)
