@@ -169,13 +169,14 @@ def save_graph(graph, output_path, timing=False):
 @hydra.main(config_path="configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
 
+    outputext = '.pickle'
     jsonpaths = os.path.join(cfg.json_folder, '*.json')
     jsonpaths = glob.glob(jsonpaths)
     for filepath in tqdm(jsonpaths):
         if os.path.exists(filepath):
             json_path = filepath
-            filename = str(os.path.split(filepath)[1])
-            output_path = cfg.output_folder + cfg.output_corename + filename 
+            filename = str(os.path.splitext(os.path.split(filepath)[1])[0])
+            output_path = cfg.output_folder + cfg.output_corename + filename + outputext  
 
             G = build_graph_from_json(json_path, radius=cfg.radius, timing=cfg.timing)
             save_graph(G, output_path,  timing=cfg.timing)
