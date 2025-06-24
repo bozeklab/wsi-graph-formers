@@ -4,13 +4,16 @@ defaults:
 json_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 hvn_output_graphprocessing_3/"
 
-output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/graphs/"
-output_corename: "graph_r10_"
+pickle_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/graphs/"
+pickle_output_corename: "graph_r50_"
+
+conversion_input_folder: ""
+conversion_output_folder: ""
 
 visualization_path: ""
 
 
-radius: 10
+radius: 50
 max_nodes_display: 1000
 figsize: [10, 10]
 

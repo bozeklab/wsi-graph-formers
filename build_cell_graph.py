@@ -176,7 +176,7 @@ def main(cfg: DictConfig):
         if os.path.exists(filepath):
             json_path = filepath
             filename = str(os.path.splitext(os.path.split(filepath)[1])[0])
-            output_path = cfg.output_folder + cfg.output_corename + filename + outputext  
+            output_path = cfg.pickle_output_folder + cfg.pickle_output_corename + filename + outputext  
 
             G = build_graph_from_json(json_path, radius=cfg.radius, timing=cfg.timing)
             save_graph(G, output_path,  timing=cfg.timing)
