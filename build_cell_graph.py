@@ -146,7 +146,7 @@ def build_graph_from_json(json_path, radius=50, timing=False):
 
 
 
-def save_graph(graph, output_path, timing=False):
+def save_pickle_graph(graph, output_path, timing=False):
     """
     Save the constructed graph to a file.
 
@@ -155,7 +155,7 @@ def save_graph(graph, output_path, timing=False):
     graph : networkx.Graph
         The graph object to save.
     output_path : str
-        Path to the output .gpickle file.
+        Path to the output .pickle file.
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with timing_block(timing, "Saving graph"):
@@ -179,7 +179,7 @@ def main(cfg: DictConfig):
             output_path = cfg.pickle_output_folder + cfg.pickle_output_corename + filename + outputext  
 
             G = build_graph_from_json(json_path, radius=cfg.radius, timing=cfg.timing)
-            save_graph(G, output_path,  timing=cfg.timing)
+            save_pickle_graph(G, output_path, timing=cfg.timing)
 
 if __name__ == "__main__":
     main()

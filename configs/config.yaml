@@ -7,8 +7,8 @@ hvn_output_graphprocessing_3/"
 pickle_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/graphs/"
 pickle_output_corename: "graph_r50_"
 
-conversion_input_folder: ""
-conversion_output_folder: ""
+
+conversion_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/pyg_graphs/"
 
 visualization_path: ""
 
