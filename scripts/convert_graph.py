@@ -98,12 +98,30 @@ def main(cfg: DictConfig):
             filename = str(os.path.splitext(os.path.split(filepath)[1])[0])
             output_path = cfg.conversion_output_folder + filename + outputext
 
-            with open(pickle_path, "rb") as f:
-                G = pickle.load(f)
-            pyg_graph = nx_to_pyg_data(G)
-            # we do not writte a function for saving as it is basically one line and one print
-            torch.save(pyg_graph, output_path)
-            print(f"Converted graph saved to: {output_path}")
+            # we don't want the script to stop in case of a path problem
+            try:
+                with open(pickle_path, "rb") as f:
+                    G = pickle.load(f)
+                pyg_graph = nx_to_pyg_data(G)
+                # we do not writte a function for saving as it is basically 
+                # one line and one print
+                torch.save(pyg_graph, output_path)
+                #print(f"Converted graph saved to: {output_path}")
+
+            # we do 2 exceptions: 
+            # one specific to file file missing, not a pickle, or truncated 
+            except (FileNotFoundError,
+                    pickle.UnpicklingError,
+                    EOFError) as e:
+
+                print(f"Skipping {filename}: {e}")
+                continue 
+
+            # the other one for any other unexpected error:
+            except Exception as e:
+
+                print(f"Failed on {filename}: {e}")
+                continue
 
     print("Conversion complete!")
 
