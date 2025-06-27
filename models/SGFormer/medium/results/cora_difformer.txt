@@ -1,9 +1,0 @@
-label per class:20, valid:500,test:1000
-method: difformer hidden: 64 lr:0.01
-5 runs: Highest Train: 26.29 ± 9.30 Highest val epoch:2
-Highest Test: 31.90 ± 5.82 Final Test: 31.06 ± 4.17 run_time: 17.71910000622285
-
-train_prop:0.5, valid_prop:0.25method: difformer hidden: 32 lr:0.01
-5 runs: Highest Train: 100.00 ± 0.00 Highest val epoch:110
-Highest Test: 81.84 ± 0.34 Final Test: 80.62 ± 0.52 run_time: 12.389370138983917
-

@@ -2,8 +2,20 @@
 #Folder
 archive
 outputs
+large/data/
+medium/data/
 
 #Files
 *.DS_Store
-._*
-._.gitignore
+*._*
+
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
+
+# Results
+**/results/
+
+# Saved models
+**/checkpoint/
+*.pkl
+
