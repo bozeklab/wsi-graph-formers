@@ -1,0 +1,4 @@
+train_prop:0.5, valid_prop:0.25method: nodeformer hidden: 32 lr:0.01
+5 runs: Highest Train: 97.57 ± 1.93 Highest val epoch:279
+Highest Test: 79.38 ± 2.55 Final Test: 78.86 ± 3.04 run_time: 24.731621478082232
+
