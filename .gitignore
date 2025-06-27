@@ -4,6 +4,8 @@ archive
 outputs
 large/data/
 medium/data/
+large/model/
+medium/model/
 
 #Files
 *.DS_Store
