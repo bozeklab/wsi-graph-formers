@@ -6,6 +6,7 @@ large/data/
 medium/data/
 large/model/
 medium/model/
+Data_General/
 
 #Files
 *.DS_Store

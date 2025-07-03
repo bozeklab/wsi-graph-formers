@@ -1,0 +1,68 @@
+# configfile.yaml
+defaults:
+  - _self_
+
+dataset: largewsi
+sub_dataset: ""
+data_dir: ../../../../../Data_General/Predictions/Former_Models_InferData/data/
+device: 0
+cpu: False
+seed: 123
+epochs: 500
+runs: 1
+directed: False
+train_prop: 0.5
+valid_prop: 0.25
+protocol: semi
+rand_split: False
+rand_split_class: False
+label_num_per_class: 20
+metric: acc
+
+# model settings
+method: sgformer
+hidden_channels: 32
+use_graph: False
+aggregate: add
+graph_weight: 0.8
+
+# gnn settings
+gnn_use_bn: False
+gnn_use_residual: False
+gnn_use_weight: False
+gnn_use_init: False
+gnn_use_act: False
+gnn_num_layers: 2
+gnn_dropout: 0.0
+gnn_weight_decay: 0.001
+
+# transformer branch
+trans_num_heads: 1
+trans_use_weight: False
+trans_use_bn: False
+trans_use_residual: False
+trans_use_act: False
+trans_num_layers: 2
+trans_dropout: 0.0
+trans_weight_decay: 0.001
+
+# training
+lr: 0.01
+batch_size: 10000
+patience: 200
+
+# display
+display_step: 1
+eval_step: 1
+cached: False
+print_prop: False
+save_result: False
+save_model: False
+use_pretrained: False
+save_att: False
+model_dir: ../../model/
+
+# other
+hops: 2
+gat_heads: 4
+out_heads: 1

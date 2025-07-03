@@ -1,21 +1,26 @@
 defaults:
   - _self_
 
+# all paths
 json_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-hvn_output_graphprocessing_3/"
+previous_steps/hvn_output_graphprocessing_3/"
 
-pickle_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/graphs/"
-pickle_output_corename: "graph_r50_"
+pickle_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+test_samples/graphs_test_sample/"
 
-
-conversion_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/pyg_graphs/"
+conversion_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+pyg_graphs/"
 
 visualization_path: ""
 
-
+# generate graph (pickle format)
+pickle_output_corename: "graph_r50_"
 radius: 50
+timing: True 
+
+# graph visualization
 max_nodes_display: 1000
 figsize: [10, 10]
 
-timing: True 
+
 

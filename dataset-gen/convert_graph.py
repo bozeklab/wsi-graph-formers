@@ -2,6 +2,9 @@
 Lucas Sancéré 2025
 """
 
+import sys
+sys.path.append('../')  # Only for Remote use on Clusters
+
 import pickle
 import torch
 import numpy as np
@@ -13,11 +16,12 @@ from pathlib import Path
 import os
 from tqdm import tqdm
 import glob
+from torch_geometric.data import Data
 
 from utils.graph_utils import _is_numeric, _flatten
 
 
-def nx_to_pyg_data(G: nx.Graph):
+def nx_to_pyg_data(G: nx.Graph) -> Data:
     """
     Convert a NetworkX graph into a PyTorch-Geometric ``Data`` object.
 
@@ -81,8 +85,23 @@ def nx_to_pyg_data(G: nx.Graph):
 
 
 
+def save_skinwsi_graph(pyg_graph: Data, output_path: str):
+    """
+    Simple function to save with torch.save following the arguments of the skinwsi graphs Data
+    """
+    torch.save(
+            {
+            'x': pyg_graph.x,
+            'y': pyg_graph.y,
+            'edge_index': pyg_graph.edge_index,
+            'centroid':pyg_graph.centroid,
+            }, 
+            output_path)
 
-@hydra.main(config_path="configs", config_name="config", version_base=None)
+
+
+
+@hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
 
     # in case cfg.conversion_output_folder does not exiqsts 
@@ -103,10 +122,9 @@ def main(cfg: DictConfig):
                 with open(pickle_path, "rb") as f:
                     G = pickle.load(f)
                 pyg_graph = nx_to_pyg_data(G)
-                # we do not writte a function for saving as it is basically 
-                # one line and one print
-                torch.save(pyg_graph, output_path)
-                #print(f"Converted graph saved to: {output_path}")
+                # Store attributes as dict to avoid version compatibility issues
+                save_skinwsi_graph(pyg_graph, output_path)
+                print(f"Converted graph saved to: {output_path}")
 
             # we do 2 exceptions: 
             # one specific to file file missing, not a pickle, or truncated 

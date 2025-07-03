@@ -2,6 +2,9 @@
 Lucas Sancéré 2025
 """
 
+import sys
+sys.path.append('../')  # Only for Remote use on Cluste
+
 import networkx as nx
 import matplotlib.pyplot as plt
 import random
@@ -87,7 +90,7 @@ def plot_graph(G, max_nodes=1000, figsize=(10, 10)):
     plt.show()
 
 
-@hydra.main(config_path="configs", config_name="config", version_base=None)
+@hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     with open(cfg.visualization_path, "rb") as f:
         G = pickle.load(f)

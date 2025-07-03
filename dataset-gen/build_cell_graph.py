@@ -2,6 +2,8 @@
 Lucas Sancéré 2025
 """
 
+import sys
+sys.path.append('../')  # Only for Remote use on Cluste
 
 import os
 import glob
@@ -166,7 +168,7 @@ def save_pickle_graph(graph, output_path, timing=False):
 
 
 
-@hydra.main(config_path="configs", config_name="config", version_base=None)
+@hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
 
     outputext = '.pickle'

@@ -1,3 +1,4 @@
+
 from collections import defaultdict
 import numpy as np
 import torch
@@ -6,24 +7,24 @@ import scipy
 import scipy.io
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
-
 from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
-
 from torch_geometric.datasets import Planetoid, Amazon, Coauthor
 from torch_geometric.transforms import NormalizeFeatures
+from torch_geometric.data import Data
 from os import path
-
 from torch_sparse import SparseTensor
 from google_drive_downloader import GoogleDriveDownloader as gdd
-
 import networkx as nx
 import scipy.sparse as sp
-
 from ogb.nodeproppred import NodePropPredDataset, PygNodePropPredDataset
 import os
-
 from torch_geometric.utils import subgraph, k_hop_subgraph, to_undirected
 import pickle as pkl
+
+import json
+import csv
+
+
 
 class NCDataset(object):
     def __init__(self, name):
@@ -141,17 +142,23 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
 
 
 
-
-
 def load_skinwsi_dataset(data_dir, dataname):
-    graphname = "graph_r100_5320-18.pt" 
+    graphname = "graph_r50_4309-13.pt" 
     processfolder = "/processed/"
     graph_path = data_dir + dataname + processfolder + graphname
-    data = torch.load(graph_path)
+    graph_dict = torch.load(graph_path)
+
+    # Rebuild Data object
+    data = Data(
+        x=graph_dict['x'],
+        y=graph_dict['y'],
+        edge_index=graph_dict['edge_index'],
+        centroids=graph_dict['centroid'] 
+    )
+
     anchor = True 
 
     return data
-
 
 
 
