@@ -141,24 +141,77 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
 
 
 
+def custom_fixed_split(label, train_prop=0.5, valid_prop=0.25, seed=42, per_class=False):
+    np.random.seed(seed)
+    label = label.squeeze().numpy()
+    n = len(label)
+    idx = np.arange(n)
 
-def load_skinwsi_dataset(data_dir, dataname):
-    graphname = "graph_r50_4309-13.pt" 
-    processfolder = "/processed/"
-    graph_path = data_dir + dataname + processfolder + graphname
-    graph_dict = torch.load(graph_path)
+    if per_class:
+        classes = np.unique(label)
+        train_idx, valid_idx, test_idx = [], [], []
+        for c in classes:
+            c_idx = np.where(label == c)[0]
+            np.random.shuffle(c_idx)
+            n_c = len(c_idx)
+            n_train = int(train_prop * n_c)
+            n_valid = int(valid_prop * n_c)
+            train_idx.extend(c_idx[:n_train])
+            valid_idx.extend(c_idx[n_train:n_train + n_valid])
+            test_idx.extend(c_idx[n_train + n_valid:])
+    else:
+        np.random.shuffle(idx)
+        n_train = int(train_prop * n)
+        n_valid = int(valid_prop * n)
+        train_idx = idx[:n_train]
+        valid_idx = idx[n_train:n_train + n_valid]
+        test_idx = idx[n_train + n_valid:]
 
-    # Rebuild Data object
-    data = Data(
-        x=graph_dict['x'],
-        y=graph_dict['y'],
-        edge_index=graph_dict['edge_index'],
-        centroids=graph_dict['centroid'] 
+    return (
+        torch.tensor(train_idx, dtype=torch.long),
+        torch.tensor(valid_idx, dtype=torch.long),
+        torch.tensor(test_idx, dtype=torch.long),
     )
 
-    anchor = True 
 
-    return data
+
+
+def load_skinwsi_dataset(data_dir, dataname, seed=42, train_prop=0.5, valid_prop=0.25):
+    graphname = "graph_r50_4309-13.pt" 
+    processfolder = "/processed/"
+    graph_path = data_dir + dataname +  processfolder + graphname
+    graph_dict = torch.load(graph_path)
+
+    # Create NCDataset
+    dataset = NCDataset(dataname)
+    
+    edge_index = graph_dict['edge_index']
+    node_feat = graph_dict['x']
+    label = graph_dict['y']
+    num_nodes = node_feat.shape[0]
+
+    dataset.graph = {
+        'edge_index': edge_index,
+        'node_feat': node_feat,
+        'edge_feat': None,
+        'num_nodes': num_nodes
+    }
+    dataset.label = label
+
+    # Add custom deterministic split loader
+    def load_fixed_splits():
+        train_idx, valid_idx, test_idx = custom_fixed_split(
+            label, train_prop=train_prop, valid_prop=valid_prop, seed=seed
+        )
+        return {
+            'train': train_idx,
+            'valid': valid_idx,
+            'test': test_idx,
+        }
+
+    dataset.load_fixed_splits = load_fixed_splits
+    
+    return dataset
 
 
 

@@ -51,6 +51,7 @@ def main(cfg: DictConfig):
     else:
         device = torch.device("cuda:" + str(cfg.device)) if torch.cuda.is_available() else torch.device("cpu")
 
+
     ### Load and preprocess data ###
     dataset = load_dataset(cfg.data_dir, cfg.dataset, cfg.sub_dataset)
 
@@ -58,18 +59,27 @@ def main(cfg: DictConfig):
         dataset.label = dataset.label.unsqueeze(1)
     dataset.label = dataset.label.to(device)
 
-    # get the splits for all runs
+
+    #### get the splits for all runs
     if cfg.rand_split:
         split_idx_lst = [dataset.get_idx_split(train_prop=cfg.train_prop, valid_prop=cfg.valid_prop)
                          for _ in range(cfg.runs)]
+
     elif cfg.rand_split_class:
         split_idx_lst = [dataset.get_idx_split(split_type='class', label_num_per_class=cfg.label_num_per_class)
                          for _ in range(cfg.runs)]
+
     elif cfg.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products']:
         split_idx_lst = [dataset.load_fixed_splits()
                          for _ in range(cfg.runs)]
+
+    elif cfg.dataset == 'skinwsi':
+        split_idx_lst = dataset.load_fixed_splits()
+
     else:
         split_idx_lst = load_fixed_splits(cfg.data_dir, dataset, name=cfg.dataset, protocol=cfg.protocol)
+
+
 
     ### Basic information of datasets ###
     n = dataset.graph['num_nodes']
@@ -80,7 +90,9 @@ def main(cfg: DictConfig):
 
     print(f"dataset {cfg.dataset} | num nodes {n} | num edge {e} | num node feats {d} | num classes {c}")
 
-    # whether or not to symmetrize
+
+
+    ### whether or not to symmetrize
     if not cfg.directed and cfg.dataset != 'ogbn-proteins':
         dataset.graph['edge_index'] = to_undirected(dataset.graph['edge_index'])
 
@@ -90,14 +102,21 @@ def main(cfg: DictConfig):
     dataset.graph['edge_index'], dataset.graph['node_feat'] = \
         dataset.graph['edge_index'].to(device), dataset.graph['node_feat'].to(device)
 
+
+
     ### Load method ###
     model = parse_method(cfg, c, d, device)
+
+
 
     ### Loss function (Single-class, Multi-class) ###
     if cfg.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
         criterion = nn.BCEWithLogitsLoss()
     else:
         criterion = nn.NLLLoss()
+
+
+
 
     ### Performance metric (Acc, AUC, F1) ###
     if cfg.metric == 'rocauc':
@@ -111,6 +130,9 @@ def main(cfg: DictConfig):
 
     model.train()
     print('MODEL:', model)
+
+
+
 
     ### Training loop ###
     for run in range(cfg.runs):
