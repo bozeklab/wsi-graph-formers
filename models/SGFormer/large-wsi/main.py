@@ -74,7 +74,7 @@ def main(cfg: DictConfig):
                          for _ in range(cfg.runs)]
 
     elif cfg.dataset == 'skinwsi':
-        split_idx_lst = dataset.load_fixed_splits()
+        split_idx_dict = dataset.load_fixed_splits()
 
     else:
         split_idx_lst = load_fixed_splits(cfg.data_dir, dataset, name=cfg.dataset, protocol=cfg.protocol)
@@ -138,10 +138,19 @@ def main(cfg: DictConfig):
     for run in range(cfg.runs):
         if cfg.dataset in ['cora', 'citeseer', 'pubmed'] and cfg.protocol == 'semi':
             split_idx = split_idx_lst[0]
+        elif cfg.dataset == "skinwsi":
+            # there is only one run of train/val/test (for now)
+            split_idx = split_idx_dict
         else:
             split_idx = split_idx_lst[run]
+
+
         train_idx = split_idx['train'].to(device)
+
+
         model.reset_parameters()
+
+
         if cfg.method == 'sgformer':
             optimizer = torch.optim.Adam([
                 {'params': model.params1, 'weight_decay': cfg.trans_weight_decay},
