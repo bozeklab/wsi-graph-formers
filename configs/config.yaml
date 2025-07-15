@@ -1,25 +1,39 @@
 defaults:
   - _self_
 
-# all paths
-json_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_1/"
+### all paths
 
-pickle_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-graphs/"
+json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_1/"
 
-conversion_output_folder: "/home/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-pyg_graphs/"
+pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+graphs/r50/"
+
+conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+test_samples/pyg_graphs/"
+
+simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+test_samples/simplified_pyg_graphs/"
 
 visualization_path: ""
 
+
+
+### graphs 
+
 # generate graph (pickle format)
-pickle_output_corename: "graph_r100_"
-radius: 100
+pickle_output_corename: "graph_r25_"
+radius: 25
 timing: True 
 
+# graph simplification
+max_hops: 3
+
 # graph visualization
-max_nodes_display: 1000
+graphtype: pyg  # [nx, pyg]
+max_nodes_display: 500000
 figsize: [10, 10]
+
+
 
 
 

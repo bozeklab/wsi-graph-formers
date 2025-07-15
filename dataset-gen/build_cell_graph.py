@@ -23,8 +23,8 @@ import pickle
 import time 
 from contextlib import contextmanager
 
-cs = ConfigStore.instance()
-cs.store(name="graph_config", node=GraphConfig)
+# cs = ConfigStore.instance()
+# cs.store(name="graph_config", node=GraphConfig)
 
 
 
