@@ -14,7 +14,7 @@ from torch_geometric.utils import to_undirected, remove_self_loops, add_self_loo
 from torch_scatter import scatter
 
 from logger import Logger, save_result
-from dataset import load_dataset
+from dataset import load_dataset, load_dataset_extra
 from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, eval_f1, to_sparse_tensor, \
     load_fixed_splits, adj_mul, get_gpu_memory_map, count_parameters
 from eval import evaluate
@@ -53,7 +53,21 @@ def main(cfg: DictConfig):
 
 
     ### Load and preprocess data ###
-    dataset = load_dataset(cfg.data_dir, cfg.dataset, cfg.sub_dataset)
+    if cfg.customload:
+        if cfg.dataset == 'skinwsi':
+            dataset = load_dataset_extra(
+                cfg.data_dir, 
+                cfg.dataset, 
+                cfg.nodestype, 
+                cfg.train_prop, 
+                cfg.test_prop,
+                cfg.sub_dat
+                )
+        else:
+            pass 
+
+    else:
+        dataset = load_dataset(cfg.data_dir, cfg.dataset, cfg.sub_dat)
 
     if len(dataset.label.shape) == 1:
         dataset.label = dataset.label.unsqueeze(1)
@@ -168,6 +182,7 @@ def main(cfg: DictConfig):
 
             train_start = time.time()
             out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+
             if cfg.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
                 if dataset.label.shape[1] == 1:
                     true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
@@ -175,10 +190,30 @@ def main(cfg: DictConfig):
                     true_label = dataset.label
                 loss = criterion(out[train_idx], true_label.squeeze(1)[
                     train_idx].to(torch.float))
+            
             else:
                 out = F.log_softmax(out, dim=1)
-                loss = criterion(
-                    out[train_idx], dataset.label.squeeze(1)[train_idx])
+
+                if cfg.trainingtask == "binarynodeclass_withkcn":
+                    # Mask for target classification nodes (5 or 6)
+                    train_mask = torch.isin(dataset.label, torch.tensor([5, 6]))
+                    binary_labels = (dataset.label == 6).long()  # Convert: 5 → 0, 6 → 1
+
+                    # Compute loss only on 5/6 nodes
+                    loss = criterion(
+                        out[train_mask], 
+                        binary_labels.squeeze(1)[train_mask]
+                        )
+
+
+                else:
+                    loss = criterion(
+                        out[train_idx], 
+                        dataset.label.squeeze(1)[train_idx]
+                        )
+
+            
+
             loss.backward()
             optimizer.step()
 

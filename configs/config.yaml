@@ -18,7 +18,7 @@ visualization_path: ""
 
 
 
-### graphs 
+### graphs
 
 # generate graph (pickle format)
 pickle_output_corename: "graph_r25_"

@@ -29,18 +29,17 @@ def subgraph_filtering(data: Data, nodes_to_keep: torch.Tensor, filtering_step: 
     Parameters
     ----------
     data : torch_geometric.data.Data
-        Input PyG graph containing edge_index, cell_type, and optionally x and y.
+        Input PyG graph containing edge_index, cell_type, and optionally x, y, centroid.
     nodes_to_keep : torch.Tensor
         1D tensor of node indices to retain in the filtered subgraph.
+    filtering_step : int
+        Optional flag for debugging or behavior control.
 
     Returns
     -------
     data : torch_geometric.data.Data
-        Filtered graph containing only the nodes in `nodes_to_keep`, with
-        edge_index, cell_type, and relevant node attributes updated.
+        Filtered graph containing only the selected nodes and updated attributes.
     """
-    # Filter edges and relabel nodes to keep only selected nodes
-    
     edge_index, _ = subgraph(
         nodes_to_keep,
         data['edge_index'],
@@ -49,13 +48,9 @@ def subgraph_filtering(data: Data, nodes_to_keep: torch.Tensor, filtering_step: 
     )
     data['edge_index'] = edge_index
 
-    # Filter node attributes
-    if 'x' in data:
-        data['x'] = data['x'][nodes_to_keep]
-    if 'y' in data:
-        data['y'] = data['y'][nodes_to_keep]
-    if 'centroid' in data:
-        data['centroid']
+    for key in ['x', 'y', 'cell_type', 'centroid']:
+        if key in data:
+            data[key] = data[key][nodes_to_keep]
 
     # for older pyg 
     # edge_index, _ = subgraph(

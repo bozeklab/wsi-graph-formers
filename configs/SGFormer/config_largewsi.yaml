@@ -78,10 +78,20 @@ hops: 2                                # number of hops for SGC
 gat_heads: 4                           # attention heads for gat
 out_heads: 1                           # out heads for gat
 
+
+
+
+### new parameters
+
 # Random initialization 
 fixed_init: True 
 
+# training
+trainingtask: nodeclassification       # [nodeclassification, binarynodeclass_withkcn]  (binarynodeclass_withkcn = Binary Node Classification with Known Context Nodes)
 
+# dataloading
+nodestype: notumor                     # [allclasses, notumor], keep or remove classes labels of nodes after loading
+customload: True                       # if True, can load extra parameters specific to skinwsi data
 
 
 

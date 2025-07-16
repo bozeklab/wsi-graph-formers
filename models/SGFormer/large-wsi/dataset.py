@@ -139,6 +139,32 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
         raise ValueError('Invalid dataname')
     return dataset
 
+def load_dataset_extra(data_dir, 
+    dataname, 
+    nodestype,
+    train_prop,
+    test_prop,
+    sub_dataname=''
+    ):
+    """ Loader for NCDataset with extra arguments 
+        Returns NCDataset 
+
+        Only compatible with skinwsi
+    """
+    print(dataname)
+    if dataname == 'skinwsi':
+        dataset = load_skinwsi_dataset(
+            data_dir, 
+            dataname, 
+            nodestype,
+            train_prop, 
+            test_prop, 
+            sub_dataname
+            )
+    else:
+        raise ValueError('Invalid dataname')
+    return dataset
+
 
 
 def custom_fixed_split(label, train_prop=0.5, valid_prop=0.25, seed=42, per_class=False):
@@ -176,7 +202,7 @@ def custom_fixed_split(label, train_prop=0.5, valid_prop=0.25, seed=42, per_clas
 
 
 
-def load_skinwsi_dataset(data_dir, dataname, seed=42, train_prop=0.5, valid_prop=0.25):
+def load_skinwsi_dataset(data_dir, dataname, nodestype='allclasses', seed=42, train_prop=0.5, valid_prop=0.25):
     graphname = "graph_r50_4309-13.pt" 
     processfolder = "/processed/"
     graph_path = data_dir + dataname +  processfolder + graphname
@@ -189,6 +215,11 @@ def load_skinwsi_dataset(data_dir, dataname, seed=42, train_prop=0.5, valid_prop
     node_feat = graph_dict['x']
     label = graph_dict['y']
     num_nodes = node_feat.shape[0]
+
+    # Load the data depending on the different modes, notumor, binary or allnodes.
+    if nodestype == 'notumor':
+        label[label == 6] = 5
+
 
     dataset.graph = {
         'edge_index': edge_index,
