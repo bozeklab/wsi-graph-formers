@@ -2,9 +2,12 @@
 defaults:
   - _self_
 
-dataset: largewsi
+
+# base configs
+dataset: ""
 sub_dataset: ""
-data_dir: "../../../../../Data_General/Predictions/Former_Models_InferData/data/"
+data_dir: ../../../../../Data_General/TrainingSets/GraphSet/
+model_dir: ../../../checkpoints/
 device: 0                               # which gpu to use if any (default: 0)
 cpu: False 
 seed: 123
@@ -61,6 +64,8 @@ batch_size: 10000                      # mini batch training for large graphs
 patience: 200                          # early stopping patience
 weight_decay: 0.005
 dropout: 0.5
+save_model: False
+use_pretrained: False
 
 # display
 display_step: 1                        # how often to print
@@ -68,10 +73,7 @@ eval_step: 1                           # how often to evaluate
 cached: False                          # set to use faster sgc
 print_prop: False                      # print proportions of predicted class
 save_result: False
-save_model: False
-use_pretrained: False
 save_att: False                        # whether to save attention (for visualization)
-model_dir: ../../model/
 
 # other
 hops: 2                                # number of hops for SGC
@@ -93,7 +95,9 @@ trainingtask: nodeclassification       # [nodeclassification, binarynodeclass_wi
 nodestype: notumor                     # [allclasses, notumor], keep or remove classes labels of nodes after loading
 customload: True                       # if True, can load extra parameters specific to skinwsi data
 
-
-
+# inference
+model_name: ""
+pred_dir: ../../../predictions/
+nbrclass_infer: 2 
 
 

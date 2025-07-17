@@ -22,6 +22,7 @@ from parse import parse_method
 
 import time
 import pickle
+from datetime import datetime
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -60,14 +61,14 @@ def main(cfg: DictConfig):
                 cfg.dataset, 
                 cfg.nodestype, 
                 cfg.train_prop, 
-                cfg.test_prop,
-                cfg.sub_dat
+                cfg.valid_prop,
+                cfg.sub_dataset
                 )
         else:
             pass 
 
     else:
-        dataset = load_dataset(cfg.data_dir, cfg.dataset, cfg.sub_dat)
+        dataset = load_dataset(cfg.data_dir, cfg.dataset, cfg.sub_dataset)
 
     if len(dataset.label.shape) == 1:
         dataset.label = dataset.label.unsqueeze(1)
@@ -118,8 +119,8 @@ def main(cfg: DictConfig):
 
 
 
-    ### Load method ###
-    model = parse_method(cfg, c, d, device)
+    ### Load method ### 
+    model = parse_method(cfg, c, d, device) #(args, num_classes, num_feats, device)
 
 
 
@@ -231,6 +232,24 @@ def main(cfg: DictConfig):
         logger.print_statistics(run)
 
     logger.print_statistics()
+
+
+    if cfg.save_model:
+        # Get current timestamp
+        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+
+        #create the model directory if does not exists:
+        if not os.path.exists(cfg.model_dir):
+            os.mkdir(cfg.model_dir)
+
+        save_path = os.path.join(
+            cfg.model_dir, 
+            f"{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
+        )
+        
+        torch.save(model.state_dict(), save_path)
+        print(f"[INFO] Model weights saved to: {save_path}")        
+
 
 
 if __name__ == "__main__":

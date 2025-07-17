@@ -135,16 +135,20 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
         dataset = load_geom_gcn_dataset(data_dir, dataname)
     elif dataname == 'skinwsi':
         dataset = load_skinwsi_dataset(data_dir, dataname)
+    elif dataname == 'pseudoinfer-skinwsi':
+        dataset = load_pseudoinfer_skinwsi_dataset(data_dir, dataname)
     else:
         raise ValueError('Invalid dataname')
     return dataset
+
+
 
 def load_dataset_extra(data_dir, 
     dataname, 
     nodestype,
     train_prop,
-    test_prop,
-    sub_dataname=''
+    valid_prop,
+    sub_dataset
     ):
     """ Loader for NCDataset with extra arguments 
         Returns NCDataset 
@@ -156,10 +160,9 @@ def load_dataset_extra(data_dir,
         dataset = load_skinwsi_dataset(
             data_dir, 
             dataname, 
-            nodestype,
-            train_prop, 
-            test_prop, 
-            sub_dataname
+            nodestype=nodestype,
+            train_prop=train_prop, 
+            valid_prop=valid_prop 
             )
     else:
         raise ValueError('Invalid dataname')
@@ -168,7 +171,7 @@ def load_dataset_extra(data_dir,
 
 
 def custom_fixed_split(label, train_prop=0.5, valid_prop=0.25, seed=42, per_class=False):
-    np.random.seed(seed)
+    np.random.seed(int(seed))
     label = label.squeeze().numpy()
     n = len(label)
     idx = np.arange(n)
@@ -202,8 +205,15 @@ def custom_fixed_split(label, train_prop=0.5, valid_prop=0.25, seed=42, per_clas
 
 
 
-def load_skinwsi_dataset(data_dir, dataname, nodestype='allclasses', seed=42, train_prop=0.5, valid_prop=0.25):
-    graphname = "graph_r50_4309-13.pt" 
+def load_skinwsi_dataset(data_dir, 
+    dataname, 
+    nodestype='allclasses', 
+    seed=42, 
+    train_prop=0.5, 
+    valid_prop=0.25
+    ):
+
+    graphname = "graph_r50_5802-17_simplified_3-hops-ngbr.pt" 
     processfolder = "/processed/"
     graph_path = data_dir + dataname +  processfolder + graphname
     graph_dict = torch.load(graph_path)
@@ -216,9 +226,17 @@ def load_skinwsi_dataset(data_dir, dataname, nodestype='allclasses', seed=42, tr
     label = graph_dict['y']
     num_nodes = node_feat.shape[0]
 
+    # debugging
+    # maxitem = label.max().item()
+    # minitem = label.min().item()
+
     # Load the data depending on the different modes, notumor, binary or allnodes.
     if nodestype == 'notumor':
         label[label == 6] = 5
+
+    # debugging
+    # maxitem2 = label.max().item()
+    # minitem2 = label.min().item()
 
 
     dataset.graph = {
@@ -243,6 +261,35 @@ def load_skinwsi_dataset(data_dir, dataname, nodestype='allclasses', seed=42, tr
     dataset.load_fixed_splits = load_fixed_splits
     
     return dataset
+
+
+
+
+def load_pseudoinfer_skinwsi_dataset(data_dir, dataname,):
+    graphname = "graph_r50_5802-17_simplified_3-hops-ngbr.pt" 
+    processfolder = "/processed/"
+    graph_path = data_dir + 'skinwsi' +  processfolder + graphname
+    graph_dict = torch.load(graph_path)
+
+    # Create NCDataset
+    dataset = NCDataset(dataname)
+
+    # We did not import the labels (node class) as they will be infered
+    edge_index = graph_dict['edge_index']
+    node_feat = graph_dict['x']
+    num_nodes = node_feat.shape[0]
+
+    dataset.graph = {
+        'edge_index': edge_index,
+        'node_feat': node_feat,
+        'edge_feat': None,
+        'num_nodes': num_nodes
+    }
+    dataset.label = None 
+    
+    return dataset
+
+
 
 
 
