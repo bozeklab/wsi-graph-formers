@@ -16,7 +16,10 @@ Data_General/
 **/__pycache__/
 
 # Results
+results/
 **/results/
+predictions/
+**/predictions/
 
 # Saved models
 checkpoints/
