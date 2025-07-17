@@ -19,6 +19,7 @@ Data_General/
 **/results/
 
 # Saved models
+checkpoints/
 **/checkpoint/
 *.pkl
 
