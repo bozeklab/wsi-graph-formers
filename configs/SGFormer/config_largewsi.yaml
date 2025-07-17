@@ -89,15 +89,15 @@ out_heads: 1                           # out heads for gat
 fixed_init: True 
 
 # training
-trainingtask: nodeclassification       # [nodeclassification, binarynodeclass_withkcn]  (binarynodeclass_withkcn = Binary Node Classification with Known Context Nodes)
+trainingtask: nodeclassification       # [nodeclassification, binnodeclass_mask]  (binnodeclass_mask = Binary Node Classification with Known Context Nodes)
 
 # dataloading
-nodestype: notumor                     # [allclasses, notumor], keep or remove classes labels of nodes after loading
+nodestype: allclasses                     # [allclasses, notumor], keep or remove classes labels of nodes after loading
 customload: True                       # if True, can load extra parameters specific to skinwsi data
 
 # inference
 model_name: ""
 pred_dir: ../../../predictions/
-nbrclass_infer: 2 
+nbrclass_toinfer: 2 
 
 

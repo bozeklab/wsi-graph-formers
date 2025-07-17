@@ -32,6 +32,48 @@ def evaluate(model, dataset, split_idx, eval_func, criterion, args, result=None)
 
     return train_acc, valid_acc, test_acc, valid_loss, out
 
+
+
+
+
+@torch.no_grad()
+def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, args, result=None):
+    if result is not None:
+        out = result
+    else:
+        model.eval()
+        out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+
+    out = F.log_softmax(out, dim=1)
+
+    labels = dataset.label.view(-1)
+    binary_labels = (labels == 5).long()  # 4 → 0, 5 → 1
+    class_mask = (labels == 4) | (labels == 5)
+
+    def filtered_eval(split_name):
+        idx = split_idx[split_name]
+        filtered_idx = idx[class_mask[idx]]
+        y_pred = out[filtered_idx].argmax(dim=1)  # predicted class index
+        y_true = binary_labels[filtered_idx]
+        return eval_func(y_true, y_pred)
+
+    def filtered_loss(split_name):
+        idx = split_idx[split_name]
+        filtered_idx = idx[class_mask[idx]]
+        return criterion(out[filtered_idx], binary_labels[filtered_idx])
+
+    train_acc = filtered_eval('train')
+    valid_acc = filtered_eval('valid')
+    test_acc  = filtered_eval('test')
+    valid_loss = filtered_loss('valid')
+
+    return train_acc, valid_acc, test_acc, valid_loss, out
+
+
+
+
+
+
 @torch.no_grad()
 def evaluate_large(model, dataset, split_idx, eval_func, criterion, args, device="cpu", result=None):
     if result is not None:
@@ -63,6 +105,9 @@ def evaluate_large(model, dataset, split_idx, eval_func, criterion, args, device
             out[split_idx['valid']], dataset.label.squeeze(1)[split_idx['valid']])
 
     return train_acc, valid_acc, test_acc, valid_loss, out
+
+
+
 
 def evaluate_batch(model, dataset, split_idx, args, device, n, true_label):
     num_batch = n // args.batch_size + 1

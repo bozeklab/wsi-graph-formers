@@ -226,18 +226,21 @@ def load_skinwsi_dataset(data_dir,
     label = graph_dict['y']
     num_nodes = node_feat.shape[0]
 
-    # debugging
-    # maxitem = label.max().item()
-    # minitem = label.min().item()
-
-    # Load the data depending on the different modes, notumor, binary or allnodes.
+    # Load the data depending on the different modes, notumor or allnodes.
+    
     if nodestype == 'notumor':
         label[label == 6] = 5
+        # relabel class from 0 to 4 instead of from 1 to 5 to match with the loss calculation
+        # and to save checkpoint with correct shapes
+        for cellclass in range(1,6):  
+            label[label == cellclass] = cellclass - 1
 
-    # debugging
-    # maxitem2 = label.max().item()
-    # minitem2 = label.min().item()
-
+    else:
+        # relabel class from 0 to 5 instead of from 1 to 6 to match with the loss calculation
+        # and to save checkpoint with correct shapes
+        for cellclass in range(1,7):  
+            label[label == cellclass] = cellclass - 1
+   
 
     dataset.graph = {
         'edge_index': edge_index,

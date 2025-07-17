@@ -25,7 +25,7 @@ def infer(cfg: DictConfig):
     n = dataset.graph['num_nodes']
     e = dataset.graph['edge_index'].shape[1]
     # infer the number of classes for non one-hot and one-hot labels
-    c = cfg.nbrclass_infer
+    c = cfg.nbrclass_toinfer
     d = dataset.graph['node_feat'].shape[1]
 
     print(f"dataset {cfg.dataset} | num nodes {n} | num edge {e} | num node feats {d} | num classes {c}")
@@ -46,8 +46,11 @@ def infer(cfg: DictConfig):
     with torch.no_grad():
         out = model(dataset.graph['node_feat'].to(device), dataset.graph['edge_index'].to(device))
         pred = out.argmax(dim=1)
-        torch.save(pred, cfg.pred_dir + f'predictions_{cfg.dataset}_{cfg.model_name}.pt')
-        print("Inference done.")
+        
+        noext_modelname = os.path.splitext(cfg.model_name)[0] 
+        saving_path = cfg.pred_dir + f'predictions_{cfg.dataset}_{noext_modelname}.pt'
+        torch.save(pred, saving_path)
+        print("Inference saved here: {}".format(saving_path))
 
 
 

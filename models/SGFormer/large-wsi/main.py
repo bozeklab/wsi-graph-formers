@@ -15,10 +15,12 @@ from torch_scatter import scatter
 
 from logger import Logger, save_result
 from dataset import load_dataset, load_dataset_extra
-from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, eval_f1, to_sparse_tensor, \
-    load_fixed_splits, adj_mul, get_gpu_memory_map, count_parameters
-from eval import evaluate
+from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, eval_f1, \
+    eval_binary_acc, eval_binary_rocauc, eval_binary_f1, to_sparse_tensor, load_fixed_splits, adj_mul, \
+    get_gpu_memory_map, count_parameters
+from eval import evaluate, evaluate_binary_masked
 from parse import parse_method 
+from collections import Counter
 
 import time
 import pickle
@@ -103,7 +105,15 @@ def main(cfg: DictConfig):
     c = max(dataset.label.max().item() + 1, dataset.label.shape[1])
     d = dataset.graph['node_feat'].shape[1]
 
-    print(f"dataset {cfg.dataset} | num nodes {n} | num edge {e} | num node feats {d} | num classes {c}")
+    print(f"\n dataset {cfg.dataset} | num nodes {n} | num edge {e} | num node feats {d} | num classes {c}")
+
+    #number of nodes per class
+    listlabels = dataset.label.view(-1).tolist()
+    class_counts = Counter(listlabels)
+
+    print("\n Node count per class:")
+    for cls, count in sorted(class_counts.items()):
+        print(f"Class {cls}: {count} nodes")
 
 
 
@@ -135,16 +145,26 @@ def main(cfg: DictConfig):
 
     ### Performance metric (Acc, AUC, F1) ###
     if cfg.metric == 'rocauc':
-        eval_func = eval_rocauc
+        if cfg.trainingtask == "binnodeclass_mask":
+            eval_func = eval_binary_rocauc
+        else:
+            eval_func = eval_rocauc
     elif cfg.metric == 'f1':
-        eval_func = eval_f1
+        if cfg.trainingtask == "binnodeclass_mask":
+            eval_func = eval_binary_f1
+        else:
+            eval_func = eval_f1
     else:
-        eval_func = eval_acc
+        if cfg.trainingtask == "binnodeclass_mask":
+            eval_func = eval_binary_acc
+        else:
+            eval_func = eval_acc
+
 
     logger = Logger(cfg.runs, cfg)
 
     model.train()
-    print('MODEL:', model)
+    print('\n MODEL:', model)
 
 
 
@@ -161,6 +181,14 @@ def main(cfg: DictConfig):
 
 
         train_idx = split_idx['train'].to(device)
+
+        if cfg.trainingtask == "binnodeclass_mask":
+            # Mask for target classification nodes (4 or 5
+            values = torch.tensor([4, 5], device=dataset.label.device)
+            train_mask = torch.stack([dataset.label == v for v in values]).any(dim=0)
+            train_mask = train_mask.view(-1)
+
+            binary_labels = (dataset.label == 5).long().view(-1)
 
 
         model.reset_parameters()
@@ -195,17 +223,13 @@ def main(cfg: DictConfig):
             else:
                 out = F.log_softmax(out, dim=1)
 
-                if cfg.trainingtask == "binarynodeclass_withkcn":
-                    # Mask for target classification nodes (5 or 6)
-                    train_mask = torch.isin(dataset.label, torch.tensor([5, 6]))
-                    binary_labels = (dataset.label == 6).long()  # Convert: 5 → 0, 6 → 1
-
-                    # Compute loss only on 5/6 nodes
+                if cfg.trainingtask == "binnodeclass_mask":
+                    # Compute loss only on nodes of class 4 and 5 (tumor and nontumor epithelial)
+                    train_idx_filtered = train_idx[train_mask[train_idx]]
                     loss = criterion(
-                        out[train_mask], 
-                        binary_labels.squeeze(1)[train_mask]
+                        out[train_idx_filtered], 
+                        binary_labels[train_idx_filtered]
                         )
-
 
                 else:
                     loss = criterion(
@@ -213,16 +237,21 @@ def main(cfg: DictConfig):
                         dataset.label.squeeze(1)[train_idx]
                         )
 
-            
-
             loss.backward()
             optimizer.step()
 
+
             if epoch % cfg.eval_step == 0:
-                result = evaluate(model, dataset, split_idx, eval_func, criterion, cfg)
+
+                if cfg.trainingtask == "binnodeclass_mask":
+                    result = evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg)
+                else:
+                    result = evaluate(model, dataset, split_idx, eval_func, criterion, cfg)
+
                 logger.add_result(run, result[:-1])
 
                 if epoch % cfg.display_step == 0:
+
                     print_str = f'Epoch: {epoch:02d}, ' + \
                                 f'Loss: {loss:.4f}, ' + \
                                 f'Train: {100 * result[0]:.2f}%, ' + \
@@ -231,6 +260,24 @@ def main(cfg: DictConfig):
                     print(print_str)
         logger.print_statistics(run)
 
+
+
+
+    train_ids = set(split_idx['train'].tolist())
+    valid_ids = set(split_idx['valid'].tolist())
+
+    intersection = train_ids & valid_ids
+    print(f"Overlap between train and valid: {len(intersection)} nodes")
+
+    labels = dataset.label.view(-1)
+
+    for split_name in ['train', 'valid', 'test']:
+        idx = split_idx[split_name]
+        binary_mask = (labels[idx] == 4) | (labels[idx] == 5)
+        binary_labels = (labels[idx][binary_mask] == 5).long()
+        print(f"{split_name} → size: {idx.shape[0]}, class 4/5 only: {binary_labels.shape[0]}")
+        print(f"    label counts: {binary_labels.bincount().tolist()}")
+    
     logger.print_statistics()
 
 
@@ -242,11 +289,20 @@ def main(cfg: DictConfig):
         if not os.path.exists(cfg.model_dir):
             os.mkdir(cfg.model_dir)
 
-        save_path = os.path.join(
-            cfg.model_dir, 
-            f"{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
-        )
-        
+        # add in the name of tjhe weights if the task was 
+        # Binary Node Classification with Known Context Nodes
+        if cfg.trainingtask == "binarynodeclass_withkcn":
+            save_path = os.path.join(
+                cfg.model_dir, 
+                f"bnckcn_{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
+            )
+        else:
+            save_path = os.path.join(
+                cfg.model_dir, 
+                f"{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
+            )
+
+
         torch.save(model.state_dict(), save_path)
         print(f"[INFO] Model weights saved to: {save_path}")        
 

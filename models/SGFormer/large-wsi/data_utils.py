@@ -196,6 +196,7 @@ def gen_normalized_adjs(dataset):
     AD = adj * D_isqrt.view(1,-1) * D_isqrt.view(1,-1)
     return DAD, DA, AD
 
+
 def eval_f1(y_true, y_pred):
     acc_list = []
     y_true = y_true.detach().cpu().numpy()
@@ -206,6 +207,19 @@ def eval_f1(y_true, y_pred):
         acc_list.append(f1)
 
     return sum(acc_list)/len(acc_list)
+
+
+def eval_binary_f1(y_true, y_pred):
+    y_true = y_true.detach().cpu().numpy()
+    y_pred = y_pred.detach().cpu().numpy()
+    
+    # If y_pred is logits or probs, take argmax
+    if y_pred.ndim == 2:
+        y_pred = y_pred.argmax(axis=-1)
+    
+    return f1_score(y_true, y_pred, average='binary')
+
+
 
 def eval_acc(y_true, y_pred):
     acc_list = []
@@ -218,6 +232,18 @@ def eval_acc(y_true, y_pred):
         acc_list.append(float(np.sum(correct))/len(correct))
 
     return sum(acc_list)/len(acc_list)
+
+
+
+def eval_binary_acc(y_true, y_pred):
+    y_true = y_true.detach().cpu().numpy()
+    y_pred = y_pred.detach().cpu().numpy()
+    
+    if y_pred.ndim == 2:
+        y_pred = y_pred.argmax(axis=-1)
+
+    return (y_true == y_pred).sum() / len(y_true)
+
 
 
 def eval_rocauc(y_true, y_pred):
@@ -244,6 +270,25 @@ def eval_rocauc(y_true, y_pred):
             'No positively labeled data available. Cannot compute ROC-AUC.')
 
     return sum(rocauc_list)/len(rocauc_list)
+
+
+
+
+def eval_binary_rocauc(y_true, y_pred):
+    y_true = y_true.detach().cpu().numpy()
+    
+    if y_pred.ndim == 2:
+        y_pred = F.softmax(y_pred, dim=-1)[:, 1].detach().cpu().numpy()
+    else:
+        y_pred = y_pred.detach().cpu().numpy()
+
+    if np.sum(y_true == 1) > 0 and np.sum(y_true == 0) > 0:
+        return roc_auc_score(y_true, y_pred)
+    else:
+        raise RuntimeError("Cannot compute ROC-AUC: positive or negative class missing.")
+
+
+
 
 def convert_to_adj(edge_index,n_node):
     '''convert from pyg format edge_index to n by n adj matrix'''

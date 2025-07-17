@@ -144,6 +144,8 @@ def plot_pyg_graph(data, max_nodes=1000, figsize=(10, 10), only_largest_cc=False
             print(f"Graph has {num_nodes} nodes and {num_edges} edges. Sampling {max_nodes} nodes.")
             sampled_nodes = random.sample(list(G.nodes()), max_nodes)
             G = G.subgraph(sampled_nodes).copy()
+        else:
+            print(f"Graph has {num_nodes} nodes and {num_edges} edges. All nodes and edges are displayed.")
 
     # Positions (from centroid or fallback to spring_layout)
     pos = {n: G.nodes[n].get("centroid", (0, 0)) for n in G.nodes}
