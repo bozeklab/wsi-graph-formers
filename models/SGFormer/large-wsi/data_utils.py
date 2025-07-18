@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from scipy import sparse as sp
-from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import roc_auc_score, f1_score, balanced_accuracy_score
 
 from torch_sparse import SparseTensor
 from google_drive_downloader import GoogleDriveDownloader as gdd
@@ -235,6 +235,7 @@ def eval_acc(y_true, y_pred):
 
 
 
+
 def eval_binary_acc(y_true, y_pred):
     y_true = y_true.detach().cpu().numpy()
     y_pred = y_pred.detach().cpu().numpy()
@@ -243,6 +244,59 @@ def eval_binary_acc(y_true, y_pred):
         y_pred = y_pred.argmax(axis=-1)
 
     return (y_true == y_pred).sum() / len(y_true)
+
+
+
+
+def eval_bacc(y_true, y_pred):
+    """
+    Compute balanced accuracy for multi-class classification.
+
+    Parameters
+    ----------
+    y_true : Tensor [N, C]
+        Ground-truth one-hot or multi-class labels.
+    y_pred : Tensor [N, C]
+        Raw model outputs (logits or softmax).
+
+    Returns
+    -------
+    float
+        Balanced accuracy over all classes.
+    """
+    y_true = y_true.detach().cpu().numpy()
+    y_pred = y_pred.argmax(dim=-1).detach().cpu().numpy()
+
+    # If y_true is one-hot encoded
+    if y_true.ndim == 2:
+        y_true = y_true.argmax(axis=1)
+
+    return balanced_accuracy_score(y_true, y_pred)
+
+
+def eval_binary_bacc(y_true, y_pred):
+    """
+    Compute balanced accuracy for binary classification.
+
+    Parameters
+    ----------
+    y_true : Tensor [N]
+        Binary ground truth labels (0 or 1).
+    y_pred : Tensor [N] or [N, 2]
+        Predicted logits, probabilities, or class labels.
+
+    Returns
+    -------
+    float
+        Balanced accuracy between classes 0 and 1.
+    """
+    y_true = y_true.detach().cpu().numpy()
+    y_pred = y_pred.detach().cpu().numpy()
+
+    if y_pred.ndim == 2:
+        y_pred = y_pred.argmax(axis=-1)
+
+    return balanced_accuracy_score(y_true, y_pred)
 
 
 

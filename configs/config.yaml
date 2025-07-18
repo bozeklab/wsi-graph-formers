@@ -9,10 +9,10 @@ pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_
 graphs/r50/"
 
 conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-test_samples/pyg_graphs/"
+pyg_graphs/r50/"
 
 simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-test_samples/simplified_pyg_graphs/"
+simplified_pyg_graphs/r50/"
 
 visualization_path: ""
 
@@ -29,7 +29,8 @@ timing: True
 max_hops: 3
 
 # graph visualization
-graphtype: pyg  # [nx, pyg]
+graphtype: dataset  #[dataset, binary, infer]
+backend: pyg  # [nx, pyg]
 max_nodes_display: 500000
 figsize: [10, 10]
 

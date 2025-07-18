@@ -16,8 +16,8 @@ from torch_scatter import scatter
 from logger import Logger, save_result
 from dataset import load_dataset, load_dataset_extra
 from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, eval_f1, \
-    eval_binary_acc, eval_binary_rocauc, eval_binary_f1, to_sparse_tensor, load_fixed_splits, adj_mul, \
-    get_gpu_memory_map, count_parameters
+    eval_binary_acc, eval_binary_rocauc, eval_binary_f1, eval_binary_bacc, eval_bacc, \
+    to_sparse_tensor, load_fixed_splits, adj_mul, get_gpu_memory_map, count_parameters
 from eval import evaluate, evaluate_binary_masked
 from parse import parse_method 
 from collections import Counter
@@ -105,13 +105,13 @@ def main(cfg: DictConfig):
     c = max(dataset.label.max().item() + 1, dataset.label.shape[1])
     d = dataset.graph['node_feat'].shape[1]
 
-    print(f"\n dataset {cfg.dataset} | num nodes {n} | num edge {e} | num node feats {d} | num classes {c}")
+    print(f"\ndataset {cfg.dataset} | num nodes {n} | num edge {e} | num node feats {d} | num classes {c}")
 
     #number of nodes per class
     listlabels = dataset.label.view(-1).tolist()
     class_counts = Counter(listlabels)
 
-    print("\n Node count per class:")
+    print("\nNode count per class:")
     for cls, count in sorted(class_counts.items()):
         print(f"Class {cls}: {count} nodes")
 
@@ -135,7 +135,8 @@ def main(cfg: DictConfig):
 
 
     ### Loss function (Single-class, Multi-class) ###
-    if cfg.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
+    singleclass_datasets = ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins')
+    if cfg.dataset in singleclass_datasets or cfg.trainingtask == "binnodeclass_mask":
         criterion = nn.BCEWithLogitsLoss()
     else:
         criterion = nn.NLLLoss()
@@ -154,6 +155,11 @@ def main(cfg: DictConfig):
             eval_func = eval_binary_f1
         else:
             eval_func = eval_f1
+    elif cfg.metric == 'bacc':
+        if cfg.trainingtask == "binnodeclass_mask":
+            eval_func = eval_binary_bacc
+        else:
+            eval_func = eval_bacc
     else:
         if cfg.trainingtask == "binnodeclass_mask":
             eval_func = eval_binary_acc
@@ -183,12 +189,12 @@ def main(cfg: DictConfig):
         train_idx = split_idx['train'].to(device)
 
         if cfg.trainingtask == "binnodeclass_mask":
-            # Mask for target classification nodes (4 or 5
+            # Mask for target classification nodes (4 or 5)
             values = torch.tensor([4, 5], device=dataset.label.device)
             train_mask = torch.stack([dataset.label == v for v in values]).any(dim=0)
             train_mask = train_mask.view(-1)
 
-            binary_labels = (dataset.label == 5).long().view(-1)
+            binary_labels = (dataset.label == 5).float().view(-1)
 
 
         model.reset_parameters()
@@ -205,6 +211,8 @@ def main(cfg: DictConfig):
                 model.parameters(), weight_decay=cfg.weight_decay, lr=cfg.lr)
         best_val = float('-inf')
 
+
+
         for epoch in range(cfg.epochs):
             model.train()
             optimizer.zero_grad()
@@ -212,7 +220,18 @@ def main(cfg: DictConfig):
             train_start = time.time()
             out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
 
-            if cfg.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
+            if cfg.trainingtask == "binnodeclass_mask":
+                # Make sure model output is of shape [N]
+                out = out.squeeze(1)  # Because biinary model outputs 
+                # Compute loss only on nodes of class 4 and 5 (tumor and nontumor epithelial)
+                train_idx_filtered = train_idx[train_mask[train_idx]]
+                loss = criterion(
+                    out[train_idx_filtered], 
+                    binary_labels[train_idx_filtered]
+                    )
+
+
+            elif cfg.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
                 if dataset.label.shape[1] == 1:
                     true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
                 else:
@@ -223,19 +242,10 @@ def main(cfg: DictConfig):
             else:
                 out = F.log_softmax(out, dim=1)
 
-                if cfg.trainingtask == "binnodeclass_mask":
-                    # Compute loss only on nodes of class 4 and 5 (tumor and nontumor epithelial)
-                    train_idx_filtered = train_idx[train_mask[train_idx]]
-                    loss = criterion(
-                        out[train_idx_filtered], 
-                        binary_labels[train_idx_filtered]
-                        )
-
-                else:
-                    loss = criterion(
-                        out[train_idx], 
-                        dataset.label.squeeze(1)[train_idx]
-                        )
+                loss = criterion(
+                    out[train_idx], 
+                    dataset.label.squeeze(1)[train_idx]
+                    )
 
             loss.backward()
             optimizer.step()
@@ -269,14 +279,15 @@ def main(cfg: DictConfig):
     intersection = train_ids & valid_ids
     print(f"Overlap between train and valid: {len(intersection)} nodes")
 
-    labels = dataset.label.view(-1)
-
-    for split_name in ['train', 'valid', 'test']:
-        idx = split_idx[split_name]
-        binary_mask = (labels[idx] == 4) | (labels[idx] == 5)
-        binary_labels = (labels[idx][binary_mask] == 5).long()
-        print(f"{split_name} → size: {idx.shape[0]}, class 4/5 only: {binary_labels.shape[0]}")
-        print(f"    label counts: {binary_labels.bincount().tolist()}")
+    
+    if cfg.trainingtask == "binnodeclass_mask":
+        labels = dataset.label.view(-1)
+        for split_name in ['train', 'valid', 'test']:
+            idx = split_idx[split_name]
+            binary_mask = (labels[idx] == 4) | (labels[idx] == 5)
+            binary_labels = (labels[idx][binary_mask] == 5).long()
+            print(f"{split_name} → size: {idx.shape[0]}, class 4/5 only: {binary_labels.shape[0]}")
+            print(f"    label counts: {binary_labels.bincount().tolist()}")
     
     logger.print_statistics()
 
@@ -291,10 +302,10 @@ def main(cfg: DictConfig):
 
         # add in the name of tjhe weights if the task was 
         # Binary Node Classification with Known Context Nodes
-        if cfg.trainingtask == "binarynodeclass_withkcn":
+        if cfg.trainingtask == "binnodeclass_mask":
             save_path = os.path.join(
                 cfg.model_dir, 
-                f"bnckcn_{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
+                f"binnodeclass_{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
             )
         else:
             save_path = os.path.join(

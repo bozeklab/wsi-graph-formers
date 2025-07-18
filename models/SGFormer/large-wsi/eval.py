@@ -44,16 +44,16 @@ def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, args
         model.eval()
         out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
 
-    out = F.log_softmax(out, dim=1)
+    out = out.squeeze(1)
 
     labels = dataset.label.view(-1)
-    binary_labels = (labels == 5).long()  # 4 → 0, 5 → 1
+    binary_labels = (labels == 5).float()   # 4 → 0, 5 → 1
     class_mask = (labels == 4) | (labels == 5)
 
     def filtered_eval(split_name):
         idx = split_idx[split_name]
         filtered_idx = idx[class_mask[idx]]
-        y_pred = out[filtered_idx].argmax(dim=1)  # predicted class index
+        y_pred = (out[filtered_idx] > 0).long()  # predicted class index
         y_true = binary_labels[filtered_idx]
         return eval_func(y_true, y_pred)
 

@@ -81,8 +81,6 @@ gat_heads: 4                           # attention heads for gat
 out_heads: 1                           # out heads for gat
 
 
-
-
 ### new parameters
 
 # Random initialization 
@@ -96,6 +94,7 @@ nodestype: allclasses                     # [allclasses, notumor], keep or remov
 customload: True                       # if True, can load extra parameters specific to skinwsi data
 
 # inference
+infergraph: pseudoinfer-skinwsi
 model_name: ""
 pred_dir: ../../../predictions/
 nbrclass_toinfer: 2 

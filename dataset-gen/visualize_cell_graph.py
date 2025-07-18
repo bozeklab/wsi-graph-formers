@@ -20,15 +20,32 @@ import torch
 # cs = ConfigStore.instance()
 # cs.store(name="graph_config", node=GraphConfig)
 
-COLORS = [
-    (0, 0, 0),       # 0 - Background (white)  
+DATASETCOLORS = [
+    (0, 0, 0),             # 0 - Background (black)  
     (1.0, 1.0, 0.0),       # 1 - Granulocyte (yellow)  
     (0.078, 0.914, 0.078), # 2 - Lymphocyte (green)
     (0.055, 0.949, 0.965), # 3 - Plasma (light blue)
     (0.063, 0.020, 0.945), # 4 - Stroma (dark blue)
     (1.0, 0.0039, 0.0),    # 5 - Tumor (red)  
-    (1.0, 0.690, 0.067)    # 6 - Epithelial  (orange)
+    (1.0, 0.690, 0.067)    # 6 - Non Tumor Epithelial  (orange)
 ]
+
+
+INFERCOLORS = [
+    (1.0, 1.0, 0.0),       # 0 - Granulocyte (yellow)  
+    (0.078, 0.914, 0.078), # 1 - Lymphocyte (green)
+    (0.055, 0.949, 0.965), # 2 - Plasma (light blue)
+    (0.063, 0.020, 0.945), # 3 - Stroma (dark blue)
+    (0.6, 0.0, 0.6),       # 4 Epithelial (Tumor and Non Tumor) Purple
+]
+
+
+BINARYCOLORS = [
+    (1.0, 0.0039, 0.0),    # 0 - Tumor (red)  
+    (1.0, 0.690, 0.067),   # 1 - Non Tumor Epithelial  (orange)
+    (0.25, 0.25, 0.25),    # 2 - NotPredicted (dark grey)
+]
+
 
 
 
@@ -74,9 +91,9 @@ def plot_nx_graph(G, max_nodes=1000, figsize=(10, 10), only_largest_cc=False):
 
     pos = {n: G.nodes[n].get("centroid", (0, 0)) for n in G.nodes}
     colors = [
-        COLORS[G.nodes[n].get("cell_type", 0)]
-        if G.nodes[n].get("cell_type", 0) < len(COLORS)
-        else COLORS[-1]
+        DATASETCOLORS[G.nodes[n].get("cell_type", 0)]
+        if G.nodes[n].get("cell_type", 0) < len(DATASETCOLORS)
+        else DATASETCOLORS[-1]
         for n in G.nodes
     ]
 
@@ -97,7 +114,7 @@ def plot_nx_graph(G, max_nodes=1000, figsize=(10, 10), only_largest_cc=False):
 
 
 
-def plot_pyg_graph(data, max_nodes=1000, figsize=(10, 10), only_largest_cc=False):
+def plot_pyg_graph(data, graphtype='dataset', max_nodes=1000, figsize=(10, 10), only_largest_cc=False):
     """
     Plot a PyTorch-Geometric graph with node colors representing cell types.
 
@@ -151,12 +168,32 @@ def plot_pyg_graph(data, max_nodes=1000, figsize=(10, 10), only_largest_cc=False
     pos = {n: G.nodes[n].get("centroid", (0, 0)) for n in G.nodes}
 
     # Color by cell type
-    colors = [
-        COLORS[G.nodes[n].get("cell_type", 0)]
-        if G.nodes[n].get("cell_type", 0) < len(COLORS)
-        else COLORS[-1]
-        for n in G.nodes
-    ]
+    if graphtype == 'dataset':
+        colors = [
+            DATASETCOLORS[G.nodes[n].get("cell_type", 0)]
+            if G.nodes[n].get("cell_type", 0) < len(DATASETCOLORS)
+            else DATASETCOLORS[-1]
+            for n in G.nodes
+        ]
+    elif graphtype == 'infer':
+        colors = [
+            INFERCOLORS[G.nodes[n].get("cell_type", 0)]
+            if G.nodes[n].get("cell_type", 0) < len(INFERCOLORS)
+            else INFERCOLORS[-1]
+            for n in G.nodes
+        ]
+    elif graphtype == 'binary':
+        colors = [
+            BINARYCOLORS[G.nodes[n].get("cell_type", 0)]
+            if G.nodes[n].get("cell_type", 0) < len(BINARYCOLORS)
+            else BINARYCOLORS[-1]
+            for n in G.nodes
+        ]
+    else:
+        raise ValueError('Incorrect name for graphtype: "{}", It has to be dataset, binary or  infer'.format(graphtype))
+
+
+
 
     plt.figure(figsize=figsize)
     nx.draw(
@@ -185,17 +222,18 @@ def main(cfg: DictConfig):
     figsize = tuple(min(max(float(x), 2), 20) for x in figsize)
 
     ## Graph plot
-    if cfg.graphtype == 'pyg':
-        loaded_dict = torch.load(cfg.visualization_path)
+    if cfg.backend == 'pyg':
+        loaded_dict = torch.load(cfg.visualization_path, map_location=torch.device('cpu'))
         data = Data(**loaded_dict)  # <-- convert dict to PyG Data object
         plot_pyg_graph(
             data, 
+            graphtype=cfg.graphtype,
             max_nodes=cfg.max_nodes_display, 
             figsize=figsize
             )
         
 
-    elif  cfg.graphtype == 'nx':
+    elif  cfg.backend == 'nx':
         with open(cfg.visualization_path, "rb") as f:
             G = pickle.load(f)
 
@@ -213,7 +251,7 @@ def main(cfg: DictConfig):
             )
 
     else:
-        raise ValueError('cfg.graphtype is not defined properly. It has to be nx or pyg')
+        raise ValueError('cfg.backend is not defined properly. It has to be nx or pyg')
 
 
 

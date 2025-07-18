@@ -67,6 +67,26 @@ def parse_method(cfg, c: int, d: int, device: torch.device):
             gnn_use_init=cfg.gnn_use_init,
             gnn_use_act=cfg.gnn_use_act,
         ).to(device)
+    elif cfg.method == 'sgformerbin':
+        model = SGFormer_bin(
+            d, cfg.hidden_channels, c,
+            graph_weight=cfg.graph_weight,
+            aggregate=cfg.aggregate,
+            trans_num_layers=cfg.trans_num_layers,
+            trans_dropout=cfg.trans_dropout,
+            trans_num_heads=cfg.trans_num_heads,
+            trans_use_bn=cfg.trans_use_bn,
+            trans_use_residual=cfg.trans_use_residual,
+            trans_use_weight=cfg.trans_use_weight,
+            trans_use_act=cfg.trans_use_act,
+            gnn_num_layers=cfg.gnn_num_layers,
+            gnn_dropout=cfg.gnn_dropout,
+            gnn_use_bn=cfg.gnn_use_bn,
+            gnn_use_residual=cfg.gnn_use_residual,
+            gnn_use_weight=cfg.gnn_use_weight,
+            gnn_use_init=cfg.gnn_use_init,
+            gnn_use_act=cfg.gnn_use_act,
+        ).to(device)
     else:
         raise ValueError(f"Invalid method: {cfg.method}")
     return model

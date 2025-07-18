@@ -213,7 +213,7 @@ def load_skinwsi_dataset(data_dir,
     valid_prop=0.25
     ):
 
-    graphname = "graph_r50_5802-17_simplified_3-hops-ngbr.pt" 
+    graphname = "graph_r50_4539-14_simplified_3-hops-ngbr.pt" 
     processfolder = "/processed/"
     graph_path = data_dir + dataname +  processfolder + graphname
     graph_dict = torch.load(graph_path)
@@ -269,7 +269,7 @@ def load_skinwsi_dataset(data_dir,
 
 
 def load_pseudoinfer_skinwsi_dataset(data_dir, dataname,):
-    graphname = "graph_r50_5802-17_simplified_3-hops-ngbr.pt" 
+    graphname = "graph_r50_4539-14_simplified_3-hops-ngbr.pt" 
     processfolder = "/processed/"
     graph_path = data_dir + 'skinwsi' +  processfolder + graphname
     graph_dict = torch.load(graph_path)
