@@ -1,7 +1,8 @@
 
-
 import sys
-sys.path.append('../../')  # Only for Remote use on Clusters
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+# sys.path.append('../../../')  # Only for Remote use on Clusters
+
 
 import argparse
 import sys

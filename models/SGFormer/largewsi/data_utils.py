@@ -8,7 +8,8 @@ from scipy import sparse as sp
 from sklearn.metrics import roc_auc_score, f1_score, balanced_accuracy_score
 
 from torch_sparse import SparseTensor
-from google_drive_downloader import GoogleDriveDownloader as gdd
+#from google_drive_downloader import GoogleDriveDownloader as gdd
+
 
 def rand_train_test_idx(label, train_prop=.5, valid_prop=.25, ignore_negative=True):
     """ randomly splits label into train/valid/test splits """

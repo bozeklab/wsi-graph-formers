@@ -1,5 +1,5 @@
-from gnns import *
-from ours import *
+from models.SGFormer.largewsi.gnns import *
+from models.SGFormer.largewsi.ours import *
 
 
 def parse_method(cfg, c: int, d: int, device: torch.device):

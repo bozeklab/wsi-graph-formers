@@ -1,4 +1,3 @@
-
 from collections import defaultdict
 import numpy as np
 import torch
@@ -7,7 +6,6 @@ import scipy
 import scipy.io
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
-from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
 from torch_geometric.datasets import Planetoid, Amazon, Coauthor
 from torch_geometric.transforms import NormalizeFeatures
 from torch_geometric.data import Data
@@ -20,6 +18,9 @@ from ogb.nodeproppred import NodePropPredDataset, PygNodePropPredDataset
 import os
 from torch_geometric.utils import subgraph, k_hop_subgraph, to_undirected
 import pickle as pkl
+
+from models.SGFormer.largewsi.data_utils import rand_train_test_idx, \
+    even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
 
 import json
 import csv
@@ -135,8 +136,10 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
         dataset = load_geom_gcn_dataset(data_dir, dataname)
     elif dataname == 'skinwsi':
         dataset = load_skinwsi_dataset(data_dir, dataname)
-    elif dataname == 'pseudoinfer-skinwsi':
-        dataset = load_pseudoinfer_skinwsi_dataset(data_dir, dataname)
+    elif dataname == 'infermulticlass':
+        dataset = load_infer_skinwsi(data_dir, dataname)
+    elif dataname == 'inferbinary':
+        dataset = load_infer_binskinwsi(data_dir, dataname)
     else:
         raise ValueError('Invalid dataname')
     return dataset
@@ -268,10 +271,9 @@ def load_skinwsi_dataset(data_dir,
 
 
 
-def load_pseudoinfer_skinwsi_dataset(data_dir, dataname,):
+def load_infer_skinwsi(data_dir, dataname,):
     graphname = "graph_r50_4539-14_simplified_3-hops-ngbr.pt" 
-    processfolder = "/processed/"
-    graph_path = data_dir + 'skinwsi' +  processfolder + graphname
+    graph_path = data_dir + graphname
     graph_dict = torch.load(graph_path)
 
     # Create NCDataset
@@ -281,17 +283,51 @@ def load_pseudoinfer_skinwsi_dataset(data_dir, dataname,):
     edge_index = graph_dict['edge_index']
     node_feat = graph_dict['x']
     num_nodes = node_feat.shape[0]
+    # In addition to the training set where centroids are not neede (only edges)
+    # here we will need to save the centroids in order to visualize the graph safter inference
+    centroids = graph_dict['centroid']
 
     dataset.graph = {
         'edge_index': edge_index,
         'node_feat': node_feat,
         'edge_feat': None,
-        'num_nodes': num_nodes
+        'num_nodes': num_nodes,
+        'centroid': centroids
     }
     dataset.label = None 
     
     return dataset
 
+
+
+
+def load_infer_binskinwsi(data_dir, dataname,):
+    graphname = "predictions_pseudoinfer-skinwsi_sgformer_skinwsi_run20250718-161544.pt" 
+    graph_path = data_dir + graphname
+    graph_dict = torch.load(graph_path)
+
+    # Create NCDataset
+    dataset = NCDataset(dataname)
+
+    # We did not import the labels (node class) as they will be infered
+    edge_index = graph_dict['edge_index']
+    node_feat = graph_dict['x']
+    label = graph_dict['y']
+    num_nodes = node_feat.shape[0]
+    # In addition to the training set where centroids are not neede (only edges)
+    # here we will need to save the centroids in order to visualize the graph safter inference
+    centroids = graph_dict['centroid']
+
+    dataset.graph = {
+        'edge_index': edge_index,
+        'node_feat': node_feat,
+        'edge_feat': None,
+        'num_nodes': num_nodes,
+        'centroid': centroids
+    }
+    dataset.label = label 
+    
+    return dataset
 
 
 

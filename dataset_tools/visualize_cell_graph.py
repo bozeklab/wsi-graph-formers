@@ -3,7 +3,7 @@ Lucas Sancéré 2025
 """
 
 import sys
-sys.path.append('../')  # Only for Remote use on Cluste
+# sys.path.append('../')  # Only for Remote use on Cluste
 
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -11,14 +11,15 @@ import random
 from omegaconf import DictConfig
 import hydra
 from hydra.core.config_store import ConfigStore
-from configs.schema import GraphConfig
 import pickle
 from torch_geometric.utils import to_networkx
 from torch_geometric.data import Data
 import torch
 
-# cs = ConfigStore.instance()
-# cs.store(name="graph_config", node=GraphConfig)
+# import models.SGFormer.largewsi.data_utils as data_utils
+from models.SGFormer.largewsi.dataset import load_dataset
+# --> need dataset and data_utils for torch.load (if graph saved as NDdataset class)
+
 
 DATASETCOLORS = [
     (0, 0, 0),             # 0 - Background (black)  
@@ -36,7 +37,7 @@ INFERCOLORS = [
     (0.078, 0.914, 0.078), # 1 - Lymphocyte (green)
     (0.055, 0.949, 0.965), # 2 - Plasma (light blue)
     (0.063, 0.020, 0.945), # 3 - Stroma (dark blue)
-    (0.6, 0.0, 0.6),       # 4 Epithelial (Tumor and Non Tumor) Purple
+    (0.9, 0.0, 0.5),       # 4 Epithelial (Tumor and Non Tumor) Maegnta Pink
 ]
 
 
@@ -191,8 +192,6 @@ def plot_pyg_graph(data, graphtype='dataset', max_nodes=1000, figsize=(10, 10), 
         ]
     else:
         raise ValueError('Incorrect name for graphtype: "{}", It has to be dataset, binary or  infer'.format(graphtype))
-
-
 
 
     plt.figure(figsize=figsize)

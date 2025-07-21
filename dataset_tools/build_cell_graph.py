@@ -17,15 +17,10 @@ from tqdm import tqdm
 import os
 from omegaconf import DictConfig
 import hydra
-from hydra.core.config_store import ConfigStore
 from configs.schema import GraphConfig
 import pickle
 import time 
 from contextlib import contextmanager
-
-# cs = ConfigStore.instance()
-# cs.store(name="graph_config", node=GraphConfig)
-
 
 
 @contextmanager

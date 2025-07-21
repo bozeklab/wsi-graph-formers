@@ -6,8 +6,8 @@ defaults:
 # base configs
 dataset: ""
 sub_dataset: ""
-data_dir: ../../../../../Data_General/TrainingSets/GraphSet/
-model_dir: ../../../checkpoints/
+data_dir: ../../Data_General/TrainingSets/GraphSet/
+model_dir: checkpoints/
 device: 0                               # which gpu to use if any (default: 0)
 cpu: False 
 seed: 123
@@ -90,13 +90,14 @@ fixed_init: True
 trainingtask: nodeclassification       # [nodeclassification, binnodeclass_mask]  (binnodeclass_mask = Binary Node Classification with Known Context Nodes)
 
 # dataloading
-nodestype: allclasses                     # [allclasses, notumor], keep or remove classes labels of nodes after loading
+nodestype: allclasses                  # [allclasses, notumor], keep or remove classes labels of nodes after loading
 customload: True                       # if True, can load extra parameters specific to skinwsi data
 
 # inference
-infergraph: pseudoinfer-skinwsi
+infer_graphtype: infermulticlass      # [infer-multiclass, inferbinary]
 model_name: ""
-pred_dir: ../../../predictions/
-nbrclass_toinfer: 2 
+pred_input_dir: ../../Data_General/Predictions/input_wsigraph/
+pred_output_dir: predictions/
+nbrclass_toinfer: 5 
 
 
