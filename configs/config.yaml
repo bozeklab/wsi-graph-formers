@@ -31,7 +31,7 @@ max_hops: 3
 # graph visualization
 graphtype: dataset  #[dataset, binary, infer]
 backend: pyg  # [nx, pyg]
-max_nodes_display: 100000
+max_nodes_display: 300000
 figsize: [10, 10]
 
 

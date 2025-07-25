@@ -58,7 +58,7 @@ def main(cfg: DictConfig):
 
     ### Load and preprocess data ###
     if cfg.customload:
-        if cfg.dataset == 'skinwsi':
+        if cfg.dataset == 'onegraphskinwsi':
             dataset = load_dataset_extra(
                 cfg.data_dir, 
                 cfg.dataset, 
@@ -67,8 +67,10 @@ def main(cfg: DictConfig):
                 cfg.valid_prop,
                 cfg.sub_dataset
                 )
-        else:
-            pass 
+        elif cfg.dataset == 'skinwsi': 
+            raise ValueError(
+                "skinwsi dataset fit only for training with batches."
+                "For the training without batches, use onegraphskinwsi")
 
     else:
         dataset = load_dataset(cfg.data_dir, cfg.dataset, cfg.sub_dataset)
@@ -91,7 +93,7 @@ def main(cfg: DictConfig):
         split_idx_lst = [dataset.load_fixed_splits()
                          for _ in range(cfg.runs)]
 
-    elif cfg.dataset == 'skinwsi':
+    elif cfg.dataset == 'onegraphskinwsi':
         split_idx_dict = dataset.load_fixed_splits()
 
     else:
@@ -122,9 +124,11 @@ def main(cfg: DictConfig):
     if not cfg.directed and cfg.dataset != 'ogbn-proteins':
         dataset.graph['edge_index'] = to_undirected(dataset.graph['edge_index'])
 
+
+    ### clean graph and load to device 
     dataset.graph['edge_index'], _ = remove_self_loops(dataset.graph['edge_index'])
     dataset.graph['edge_index'], _ = add_self_loops(dataset.graph['edge_index'], num_nodes=n)
-
+    
     dataset.graph['edge_index'], dataset.graph['node_feat'] = \
         dataset.graph['edge_index'].to(device), dataset.graph['node_feat'].to(device)
 
@@ -180,7 +184,7 @@ def main(cfg: DictConfig):
     for run in range(cfg.runs):
         if cfg.dataset in ['cora', 'citeseer', 'pubmed'] and cfg.protocol == 'semi':
             split_idx = split_idx_lst[0]
-        elif cfg.dataset == "skinwsi":
+        elif cfg.dataset == "onegraphskinwsi":
             # there is only one run of train/val/test (for now)
             split_idx = split_idx_dict
         else:
@@ -223,7 +227,7 @@ def main(cfg: DictConfig):
 
             if cfg.trainingtask == "binnodeclass_mask":
                 # Make sure model output is of shape [N]
-                out = out.squeeze(1)  # Because biinary model outputs 
+                out = out.squeeze(1)  # Because binary model outputs 
                 # Compute loss only on nodes of class 4 and 5 (tumor and nontumor epithelial)
                 train_idx_filtered = train_idx[train_mask[train_idx]]
                 loss = criterion(

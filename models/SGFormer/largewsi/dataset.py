@@ -134,6 +134,8 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
         dataset = load_coauthor_dataset(data_dir, dataname)
     elif dataname in ('chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin'):
         dataset = load_geom_gcn_dataset(data_dir, dataname)
+    elif dataname == 'onegraphskinwsi':
+        dataset = load_skinwsi_onegraphdataset(data_dir, dataname)
     elif dataname == 'skinwsi':
         dataset = load_skinwsi_dataset(data_dir, dataname)
     elif dataname == 'infermulticlass':
@@ -159,7 +161,15 @@ def load_dataset_extra(data_dir,
         Only compatible with skinwsi
     """
     print(dataname)
-    if dataname == 'skinwsi':
+    if dataname == 'onegraphskinwsi':
+        dataset = load_skinwsi_onegraphdataset(
+            data_dir, 
+            dataname, 
+            nodestype=nodestype,
+            train_prop=train_prop, 
+            valid_prop=valid_prop 
+            )
+    elif dataname == 'skinwsi':
         dataset = load_skinwsi_dataset(
             data_dir, 
             dataname, 
@@ -208,7 +218,7 @@ def custom_fixed_split(label, train_prop=0.5, valid_prop=0.25, seed=42, per_clas
 
 
 
-def load_skinwsi_dataset(data_dir, 
+def load_skinwsi_onegraphdataset(data_dir, 
     dataname, 
     nodestype='allclasses', 
     seed=42, 
@@ -216,9 +226,9 @@ def load_skinwsi_dataset(data_dir,
     valid_prop=0.25
     ):
 
+    #graphname="graph_r50_4539-14.pt"
     graphname = "graph_r50_4539-14_simplified_3-hops-ngbr.pt" 
-    processfolder = "/processed/"
-    graph_path = data_dir + dataname +  processfolder + graphname
+    graph_path = data_dir + graphname
     graph_dict = torch.load(graph_path)
 
     # Create NCDataset
@@ -271,8 +281,67 @@ def load_skinwsi_dataset(data_dir,
 
 
 
+def load_skinwsi_dataset(data_dir, 
+    dataname, 
+    nodestype='allclasses', 
+    seed=42, 
+    train_prop=0.5, 
+    valid_prop=0.25
+    ):
+
+    graph_list = []
+
+    for file in os.listdir(data_dir):
+        if file.endswith(".pt"):
+
+            graph_dict = torch.load(os.path.join(data_dir, file))
+
+             # Create NCDataset
+            onegraphdataset = NCDataset(dataname)
+            
+            edge_index = graph_dict['edge_index']
+            node_feat = graph_dict['x']
+            label = graph_dict['y']
+            num_nodes = node_feat.shape[0]
+
+            # Load the data depending on the different modes, notumor or allnodes.
+            
+            if nodestype == 'notumor':
+                label[label == 6] = 5
+                # relabel class from 0 to 4 instead of from 1 to 5 to match with the loss calculation
+                # and to save checkpoint with correct shapes
+                for cellclass in range(1,6):  
+                    label[label == cellclass] = cellclass - 1
+
+            else:
+                # relabel class from 0 to 5 instead of from 1 to 6 to match with the loss calculation
+                # and to save checkpoint with correct shapes
+                for cellclass in range(1,7):  
+                    label[label == cellclass] = cellclass - 1
+           
+
+            onegraphdataset.graph = {
+                'edge_index': edge_index,
+                'node_feat': node_feat,
+                'edge_feat': None,
+                'num_nodes': num_nodes
+            }
+            onegraphdataset.label = label
+
+            graph_list.append(onegraphdataset)
+
+
+    return graph_list
+
+
+
+
+
+######
+# THIS SHOULD BE MODIFIED IN THE FUTURE TO ALSO MATCH SEVERAL GRAPH INFERENCE 
+#####
 def load_infer_skinwsi(data_dir, dataname,):
-    graphname = "graph_r50_4539-14_simplified_3-hops-ngbr.pt" 
+    graphname = "graph_r50_5702-10_simplified_3-hops-ngbr.pt" 
     graph_path = data_dir + graphname
     graph_dict = torch.load(graph_path)
 
@@ -300,9 +369,11 @@ def load_infer_skinwsi(data_dir, dataname,):
 
 
 
-
+######
+# THIS SHOULD BE MODIFIED IN THE FUTURE TO ALSO MATCH SEVERAL GRAPH INFERENCE 
+#####
 def load_infer_binskinwsi(data_dir, dataname,):
-    graphname = "predictions_pseudoinfer-skinwsi_sgformer_skinwsi_run20250718-161544.pt" 
+    graphname = "predictions_infermulticlass_r50_5702-10_simplified_3_sgformer_skinwsi_run20250721-164459.pt" 
     graph_path = data_dir + graphname
     graph_dict = torch.load(graph_path)
 
@@ -328,6 +399,24 @@ def load_infer_binskinwsi(data_dir, dataname,):
     dataset.label = label 
     
     return dataset
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

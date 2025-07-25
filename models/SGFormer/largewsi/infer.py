@@ -62,6 +62,10 @@ def infer(cfg: DictConfig):
     with torch.no_grad():
 
         if cfg.nbrclass_toinfer == 2:
+
+            # # Identify nodes with label == 4 (the only ones to classify)
+            # infer_mask = (infergraph.label == 4).to(device)
+
             out = model(
                 infergraph.graph['node_feat'].to(device),
                 infergraph.graph['edge_index'].to(device)
@@ -101,7 +105,8 @@ def infer(cfg: DictConfig):
 
         # save the graph
         noext_modelname = os.path.splitext(cfg.model_name)[0] 
-        saving_path = cfg.pred_output_dir + f'predictions_{cfg.infer_graphtype}_{noext_modelname}.pt'
+        saving_path = cfg.pred_output_dir + \
+                      f'predictions_{cfg.infer_graphtype}_{cfg.pred_output_name}_{noext_modelname}.pt'
         torch.save(outputgraph, saving_path)
         print("Inference saved here: {}".format(saving_path))
 

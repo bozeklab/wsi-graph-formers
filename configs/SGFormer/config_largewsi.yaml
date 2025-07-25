@@ -96,7 +96,9 @@ customload: True                       # if True, can load extra parameters spec
 # inference
 infer_graphtype: infermulticlass      # [infer-multiclass, inferbinary]
 model_name: ""
-pred_input_dir: ../../Data_General/Predictions/input_wsigraph/
+pred_input_dir: predictions/
+# pred_input_dir: ../../Data_General/Predictions/input_wsigraph/
+pred_output_name: predicted_r50_5702-10_simplified_3
 pred_output_dir: predictions/
 nbrclass_toinfer: 5 
 
