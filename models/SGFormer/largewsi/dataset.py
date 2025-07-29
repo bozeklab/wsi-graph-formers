@@ -228,7 +228,7 @@ def load_skinwsi_onegraphdataset(data_dir,
 
     #graphname="graph_r50_4539-14.pt"
     graphname = "graph_r50_4539-14_simplified_3-hops-ngbr.pt" 
-    graph_path = data_dir + graphname
+    graph_path = data_dir + dataname + graphname
     graph_dict = torch.load(graph_path)
 
     # Create NCDataset
@@ -290,11 +290,12 @@ def load_skinwsi_dataset(data_dir,
     ):
 
     graph_list = []
+    data_folder = data_dir + dataname + '/'
 
-    for file in os.listdir(data_dir):
+    for file in os.listdir(data_folder):
         if file.endswith(".pt"):
 
-            graph_dict = torch.load(os.path.join(data_dir, file))
+            graph_dict = torch.load(os.path.join(data_folder, file))
 
              # Create NCDataset
             onegraphdataset = NCDataset(dataname)

@@ -6,7 +6,7 @@ defaults:
 # base configs
 dataset: ""
 sub_dataset: ""
-data_dir: ../../Data_General/TrainingSets/GraphSet/
+data_dir: ../../Data_General/TrainingSets/GraphSet/training/
 model_dir: checkpoints/
 device: 0                               # which gpu to use if any (default: 0)
 cpu: False 

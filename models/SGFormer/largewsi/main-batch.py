@@ -8,15 +8,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.utils import to_undirected, remove_self_loops, add_self_loops, subgraph, k_hop_subgraph
 from torch_scatter import scatter
-from torch_geometric.loader import DataLoader
+from torch_geometric.data import Batch , Data # for PyG v1.7
+from torch.utils.data import DataLoader 
+
 
 from logger import Logger
 from dataset import load_dataset, load_dataset_extra
 from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, eval_f1, \
     eval_binary_acc, eval_binary_rocauc, eval_binary_f1, eval_binary_bacc, eval_bacc, \
     to_sparse_tensor, load_fixed_splits, adj_mul, get_gpu_memory_map, count_parameters
-from eval import evaluate_large, evaluate_batch
-from parse import parse_method, parser_add_main_cfg
+from eval import evaluate_large, evaluate_batch, evaluate_wloader
+from parse import parse_method
 from collections import Counter
 
 import time
@@ -36,6 +38,8 @@ from omegaconf import DictConfig, OmegaConf
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))  # print config nicely
 
+
+    ### Load and preprocess data ###
     if cfg.dataset == 'skinwsi':
             graph_list = load_dataset_extra(
                 cfg.data_dir, 
@@ -73,40 +77,63 @@ def main(cfg: DictConfig):
         device = torch.device("cuda:" + str(cfg.device)) if torch.cuda.is_available() else torch.device("cpu")
 
 
-    ### Load and preprocess data ###
-    graph_list = load_dataset_extra(
-        cfg.data_dir, 
-        cfg.dataset, 
-        cfg.nodestype, 
-        cfg.train_prop, 
-        cfg.valid_prop,
-        cfg.sub_dataset
-        )
-
-    
-    ### splitting and batching ###
     torch.manual_seed(cfg.seed)
-    graph_list = graph_list[:]
-    n = len(graph_list)
-    train_data = graph_list[:int(cfg.train_prop * n)]
-    val_data = graph_list[int(cfg.train_prop * n):int(cfg.valid_prop * n)]
-    test_data = graph_list[int(cfg.valid_prop * n):]
 
-    train_loader = DataLoader(train_data, batch_size=1, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=1)
-    test_loader = DataLoader(test_data, batch_size=1)
+
+
+    ### Convert graph list into a list of torch_geometric.data.Data objects:
+    converted = []
+    for g in graph_list:
+        if isinstance(g, Data):
+            data = g
+        else:
+            # if g is a dict with those keys
+            data = Data(
+                x= g.graph['node_feat'],
+                edge_index= g.graph['edge_index'],
+                edge_feat= None,
+                num_nodes= g.graph['num_nodes'],
+                label= g.label
+            )
+        converted.append(data)
+
+    # replacement 
+    graph_list = converted
+
+
+    # sanity-check
+    assert all(isinstance(g, Data) for g in graph_list), "Make sure graph_list[i] is a torch_geometric.data.Data"
+
+
+
+    ### splitting and batching ###
+    n = len(graph_list)
+
+    # Calculate split indices
+    train_end = int(cfg.train_prop * n)
+    val_end = int(cfg.train_prop * n + cfg.valid_prop * n)
+
+    train_data = graph_list[:train_end]
+    val_data = graph_list[train_end:val_end]
+    test_data = graph_list[val_end:]
+
+    # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
+    train_loader = DataLoader(train_data, batch_size=1, shuffle=True,  collate_fn=Batch.from_data_list)
+    val_loader = DataLoader(val_data, batch_size=1,  collate_fn=Batch.from_data_list)
+    test_loader = DataLoader(test_data, batch_size=1,  collate_fn=Batch.from_data_list)
+
 
 
 
     ### Display information of dataset (nbr graphs and so on..) ###
     num_graphs = len(graph_list)
     num_nodes_list = [data.num_nodes for data in graph_list]
-    num_edges_list = [data.num_edges for data in graph_list]
+    num_edges_list = [data.num_nodes for data in graph_list]
 
     # Collect all node labels
     all_labels = []
     for data in graph_list:
-        y = data.y
+        y = data.label
         if y.ndim == 1:
             all_labels.extend(y.tolist())
         elif y.ndim == 2 and y.size(1) == 1:
@@ -179,74 +206,111 @@ def main(cfg: DictConfig):
 
 
 
-
     ### We can test until this point
     anchor = True
-
     #true_label = dataset.label
-
-
 
 
 
     ### Training loop ###
     for run in range(cfg.runs):
-        if cfg.dataset in ['cora', 'citeseer', 'pubmed'] and cfg.protocol == 'semi':
-            split_idx = split_idx_lst[0]
-        else:
-            split_idx = split_idx_lst[run]
-        train_mask = torch.zeros(n, dtype=torch.bool)
-        train_mask[split_idx['train']] = True
 
         model.reset_parameters()
+        model.to(device)
+
         if cfg.method == 'sgformer':
             optimizer = torch.optim.Adam([
                 {'params': model.params1, 'weight_decay': cfg.trans_weight_decay},
                 {'params': model.params2, 'weight_decay': cfg.gnn_weight_decay}
-            ],
-                lr=cfg.lr)
+            ], lr=cfg.lr)
         else:
             optimizer = torch.optim.Adam(
                 model.parameters(), weight_decay=cfg.weight_decay, lr=cfg.lr)
-        best_val = float('-inf')
-        num_batch = n // cfg.batch_size + (n%cfg.batch_size>0)
+            
+
         for epoch in range(cfg.epochs):
-            model.to(device)
             model.train()
+            # total_loss = 0.0
 
-            idx = torch.randperm(n)
-            for i in range(num_batch):
-                idx_i = idx[i*cfg.batch_size:(i+1)*cfg.batch_size]
-                train_mask_i = train_mask[idx_i]
-                x_i = x[idx_i].to(device)
-                edge_index_i, _ = subgraph(idx_i, edge_index, num_nodes=n, relabel_nodes=True)
-                edge_index_i = edge_index_i.to(device)
-                y_i = true_label[idx_i].to(device)
+            train_start = time.time()
+
+            for data in train_loader:           # each `data` is one graph
+            
+                data = data.to(device)          # moves x, edge_index, y, etc.
                 optimizer.zero_grad()
-                out_i = model(x_i, edge_index_i)
-                if cfg.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
-                    loss = criterion(out_i[train_mask_i], y_i.squeeze(1)[train_mask_i].to(torch.float))
+
+                out = model(data.graph['node_feat'], data.graph['edge_index'])
+
+                if cfg.trainingtask == "binnodeclass_mask":
+                    # TO ADD LATER
+                    raise ValueError("binnodeclass_mask mode not implemented yet")
+                    
 
                 else:
-                    out_i = F.log_softmax(out_i, dim=1)
-                    loss = criterion(out_i[train_mask_i], y_i.squeeze(1)[train_mask_i])
-                loss.backward()
-                optimizer.step()
+                    out = F.log_softmax(out, dim=1)
+                    target = data.label.squeeze()
 
-            if epoch % cfg.eval_step == 0:
-                if cfg.dataset=='ogbn-papers100M':
-                    result = evaluate_batch(model, dataset, split_idx, cfg, device, n, true_label)
-                else:
-                    result = evaluate_large(model, dataset, split_idx, eval_func, criterion, cfg, device="cpu")
-                logger.add_result(run, result[:-1])
+                    loss = criterion(out, target)
 
-                if epoch % cfg.display_step == 0:
-                    print_str = f'Epoch: {epoch:02d}, ' + \
-                                f'Loss: {loss:.4f}, ' + \
-                                f'Train: {100 * result[0]:.2f}%, ' + \
-                                f'Valid: {100 * result[1]:.2f}%, ' + \
-                                f'Test: {100 * result[2]:.2f}%'
-                    print(print_str)
-        logger.print_statistics(run)
 
-    logger.print_statistics()
+            loss.backward()
+            optimizer.step()
+
+            # total_loss += loss.item()
+
+        # avg_train_loss = total_loss / len(train_loader)
+
+        ### Periodic evaluatio and logging
+        if epoch % cfg.eval_step == 0:
+            
+            train_metric, train_loss = evaluate_wloader(model, train_loader, eval_func, criterion, cfg, device)
+            val_metric,   val_loss   = evaluate_wloader(model, val_loader,   eval_func, criterion, cfg, device)
+            test_metric,  _          = evaluate_wloader(model, test_loader,  eval_func, criterion, cfg, device)
+
+            logger.add_result(run, [train_metric, val_metric, test_metric, val_loss])
+
+            if epoch % cfg.display_step == 0:
+
+                print_str = f'Epoch: {epoch:02d}, ' + \
+                            f'Train Loss: {train_loss:.4f}, ' + \
+                            f'Train: {100*train_metric:.2f}%, ' + \
+                            f'Val Loss: {val_loss:.4f}, ' + \
+                            f'Val:   {100*val_metric:.2f}%, '  + \
+                            f'Test: {100*test_metric:.2f}%'
+                print(print_str)
+    
+    logger.print_statistics(run)
+
+
+
+    ### Save model ###
+    if cfg.save_model:
+        # Get current timestamp
+        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+
+        #create the model directory if does not exists:
+        if not os.path.exists(cfg.model_dir):
+            os.mkdir(cfg.model_dir)
+
+        # Add prefix to the name of the weights if the task was 
+        # Binary Node Classification with Known Context Nodes
+        if cfg.trainingtask == "binnodeclass_mask":
+            save_path = os.path.join(
+                cfg.model_dir, 
+                f"binnodeclass_{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
+            )
+        else:
+            save_path = os.path.join(
+                cfg.model_dir, 
+                f"{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
+            )
+
+
+        torch.save(model.state_dict(), save_path)
+        print(f"[INFO] Model weights saved to: {save_path}")    
+
+
+
+
+if __name__ == "__main__":
+    main()

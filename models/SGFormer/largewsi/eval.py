@@ -3,41 +3,107 @@ import torch.nn.functional as F
 
 from torch_geometric.utils import subgraph
 
+
+
+
+
 @torch.no_grad()
-def evaluate(model, dataset, split_idx, eval_func, criterion, args, result=None):
+def evaluate(model, dataset, split_idx, eval_func, criterion, cfg, result=None):
     if result is not None:
         out = result
     else:
         model.eval()
         out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
 
-    train_acc = eval_func(
-        dataset.label[split_idx['train']], out[split_idx['train']])
-    valid_acc = eval_func(
-        dataset.label[split_idx['valid']], out[split_idx['valid']])
-    test_acc = eval_func(
-        dataset.label[split_idx['test']], out[split_idx['test']])
+    train_metric = eval_func(
+        dataset.label[split_idx['train']], 
+        out[split_idx['train']]
+    )
+    valid_metric = eval_func(
+        dataset.label[split_idx['valid']], 
+        out[split_idx['valid']]
+    )
+    test_metric = eval_func(
+        dataset.label[split_idx['test']], 
+        out[split_idx['test']]
+    )
 
-    if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
+    # NOT ONEGRAPHSKINWSI HERE --------------------------------------------------------
+    if cfg.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
         if dataset.label.shape[1] == 1:
             true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
         else:
             true_label = dataset.label
-        valid_loss = criterion(out[split_idx['valid']], true_label.squeeze(1)[
-            split_idx['valid']].to(torch.float))
+        valid_loss = criterion(
+            out[split_idx['valid']], 
+            true_label.squeeze(1)[split_idx['valid']].to(torch.float)
+        )
+    # END OF NOT ONEGRAPHSKINWSI -----------------------------------------------------------
+            
+
     else:
         out = F.log_softmax(out, dim=1)
         valid_loss = criterion(
-            out[split_idx['valid']], dataset.label.squeeze(1)[split_idx['valid']])
+            out[split_idx['valid']], 
+            dataset.label.squeeze(1)[split_idx['valid']]
+        )
 
-    return train_acc, valid_acc, test_acc, valid_loss, out
+    return train_metric, valid_metric, test_metric, valid_loss, out
 
 
 
 
 
 @torch.no_grad()
-def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, args, result=None):
+def evaluate_wloader(model, loader, eval_func, criterion, cfg, device):
+    """
+    Evaluate a node‑classification model on a PyG DataLoader of graphs.
+    Returns:
+      metric (float): whatever eval_func(all_true, all_pred) produces
+      avg_loss (float): mean loss per node
+    """
+    model.eval()
+    all_preds = []
+    all_trues = []
+    loss_sum = 0.0
+    total_nodes = 0
+
+    for batch in loader:
+
+        batch = batch.to(device)
+        out = model(batch.graph['node_feat'], batch.graph['edge_index'])
+
+        # If you’re using NLLLoss, make sure to log‑softmax
+        if not cfg.multi_label and cfg.loss == 'nll':
+            out = F.log_softmax(out, dim=1)
+
+
+        target = batch.y.to(torch.float)
+
+        loss = criterion(out, target)
+        loss_sum += loss.item() * target.size(0)
+        total_nodes += target.size(0)
+
+        all_preds.append(out.cpu())
+        all_trues.append(batch.y.cpu())
+
+    # Concatenate over all graphs → get shape (total_nodes, C) and (total_nodes,)
+    y_pred = torch.cat(all_preds, dim=0)
+    y_true = torch.cat(all_trues, dim=0)
+
+    # Compute your metric (accuracy / rocauc / f1, etc.)
+    metric = eval_func(y_true, y_pred)
+    avg_loss = loss_sum / total_nodes
+
+    return metric, avg_loss
+
+
+
+
+
+
+@torch.no_grad()
+def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg, result=None):
     if result is not None:
         out = result
     else:
@@ -62,12 +128,24 @@ def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, args
         filtered_idx = idx[class_mask[idx]]
         return criterion(out[filtered_idx], binary_labels[filtered_idx])
 
-    train_acc = filtered_eval('train')
-    valid_acc = filtered_eval('valid')
-    test_acc  = filtered_eval('test')
+    train_metric = filtered_eval('train')
+    valid_metric = filtered_eval('valid')
+    test_metric  = filtered_eval('test')
     valid_loss = filtered_loss('valid')
 
-    return train_acc, valid_acc, test_acc, valid_loss, out
+    return train_metric, valid_metric, test_metric, valid_loss, out
+
+
+
+
+
+# target = batch.y.squeeze().to(torch.long)
+
+
+
+
+
+
 
 
 

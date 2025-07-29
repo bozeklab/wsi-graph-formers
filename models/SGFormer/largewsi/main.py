@@ -225,37 +225,37 @@ def main(cfg: DictConfig):
             train_start = time.time()
             out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
 
+
             if cfg.trainingtask == "binnodeclass_mask":
                 # Make sure model output is of shape [N]
                 out = out.squeeze(1)  # Because binary model outputs 
                 # Compute loss only on nodes of class 4 and 5 (tumor and nontumor epithelial)
                 train_idx_filtered = train_idx[train_mask[train_idx]]
-                loss = criterion(
-                    out[train_idx_filtered], 
-                    binary_labels[train_idx_filtered]
-                    )
+                target = binary_labels[train_idx_filtered]
+                loss = criterion(out[train_idx_filtered], target)
 
-
+            # NOT ONEGRAPHSKINWSI HERE --------------------------------------------------------
             elif cfg.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
                 if dataset.label.shape[1] == 1:
                     true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
                 else:
                     true_label = dataset.label
-                loss = criterion(out[train_idx], true_label.squeeze(1)[
-                    train_idx].to(torch.float))
+
+                loss = criterion(out[train_idx], true_label.squeeze(1)[train_idx].to(torch.float))
+            # END OF NOT ONEGRAPHSKINWSI -----------------------------------------------------------
             
             else:
                 out = F.log_softmax(out, dim=1)
+                target = dataset.label.squeeze(1)[train_idx]
 
-                loss = criterion(
-                    out[train_idx], 
-                    dataset.label.squeeze(1)[train_idx]
-                    )
+                loss = criterion(out[train_idx], target)
+
 
             loss.backward()
             optimizer.step()
 
 
+            ### Periodic evaluatio and logging
             if epoch % cfg.eval_step == 0:
 
                 if cfg.trainingtask == "binnodeclass_mask":
@@ -273,16 +273,24 @@ def main(cfg: DictConfig):
                                 f'Valid: {100 * result[1]:.2f}%, ' + \
                                 f'Test: {100 * result[2]:.2f}%'
                     print(print_str)
+
         logger.print_statistics(run)
 
 
 
-
+    ### Print global training stats
     train_ids = set(split_idx['train'].tolist())
     valid_ids = set(split_idx['valid'].tolist())
+    test_ids = set(split_idx['test'].tolist())
+ 
+    intersection1 = train_ids & valid_ids
+    intersection2 = valid_ids & test_ids
+    intersection3 = train_ids & test_ids
 
-    intersection = train_ids & valid_ids
-    print(f"Overlap between train and valid: {len(intersection)} nodes")
+    print(f"Sanity check: are splits fully separated:")
+    print(f"\nOverlap between train and valid: {len(intersection1)} nodes")
+    print(f"\nOverlap between valid and test: {len(intersection2)} nodes")
+    print(f"\nOverlap between train and test: {len(intersection3)} nodes")
 
     
     if cfg.trainingtask == "binnodeclass_mask":
@@ -297,6 +305,8 @@ def main(cfg: DictConfig):
     logger.print_statistics()
 
 
+
+    ### Save model ###
     if cfg.save_model:
         # Get current timestamp
         timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -305,7 +315,7 @@ def main(cfg: DictConfig):
         if not os.path.exists(cfg.model_dir):
             os.mkdir(cfg.model_dir)
 
-        # add in the name of tjhe weights if the task was 
+        # Add prefix to the name of the weights if the task was 
         # Binary Node Classification with Known Context Nodes
         if cfg.trainingtask == "binnodeclass_mask":
             save_path = os.path.join(
