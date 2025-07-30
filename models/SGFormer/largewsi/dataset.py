@@ -228,7 +228,7 @@ def load_skinwsi_onegraphdataset(data_dir,
 
     #graphname="graph_r50_4539-14.pt"
     graphname = "graph_r50_4539-14_simplified_3-hops-ngbr.pt" 
-    graph_path = data_dir + dataname + graphname
+    graph_path = data_dir + dataname +  '/' + graphname
     graph_dict = torch.load(graph_path)
 
     # Create NCDataset

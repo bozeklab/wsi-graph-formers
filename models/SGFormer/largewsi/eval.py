@@ -71,25 +71,30 @@ def evaluate_wloader(model, loader, eval_func, criterion, cfg, device):
     for batch in loader:
 
         batch = batch.to(device)
-        out = model(batch.graph['node_feat'], batch.graph['edge_index'])
+        out = model(batch.x, batch.edge_index)
 
-        # If you’re using NLLLoss, make sure to log‑softmax
-        if not cfg.multi_label and cfg.loss == 'nll':
-            out = F.log_softmax(out, dim=1)
-
-
-        target = batch.y.to(torch.float)
+        out = F.log_softmax(out, dim=1)
+       
+        #target = batch.label.to(torch.float)
+        #target = batch.label.squeeze.to(torch.long)
+        target = batch.label.to(torch.long)
 
         loss = criterion(out, target)
         loss_sum += loss.item() * target.size(0)
         total_nodes += target.size(0)
 
         all_preds.append(out.cpu())
-        all_trues.append(batch.y.cpu())
+        all_trues.append(batch.label.cpu())
 
-    # Concatenate over all graphs → get shape (total_nodes, C) and (total_nodes,)
+    # Concatenate over all graphs
+    # get shape (total_nodes, C) for y_pred  and (total_nodes,) for y_true
     y_pred = torch.cat(all_preds, dim=0)
     y_true = torch.cat(all_trues, dim=0)
+
+    # resize to have y_true with a shape fitting SGFormer utils
+    num_classes = y_pred.size(1)
+    y_true = F.one_hot(y_true, num_classes=num_classes)  # (total_nodes, C)
+    y_true = y_true.argmax(dim=-1, keepdim=True) # (total_nodes, 1)
 
     # Compute your metric (accuracy / rocauc / f1, etc.)
     metric = eval_func(y_true, y_pred)
@@ -139,11 +144,9 @@ def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg,
 
 
 
-# target = batch.y.squeeze().to(torch.long)
-
-
-
-
+# target = batch.label.squeeze().to(torch.long)
+# loss also needs to change
+# target = batch.label.to(torch.float)
 
 
 

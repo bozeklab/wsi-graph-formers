@@ -228,18 +228,21 @@ def main(cfg: DictConfig):
                 model.parameters(), weight_decay=cfg.weight_decay, lr=cfg.lr)
             
 
+        train_start_training = time.time()
+
         for epoch in range(cfg.epochs):
             model.train()
             # total_loss = 0.0
 
-            train_start = time.time()
-
             for data in train_loader:           # each `data` is one graph
-            
+
+                startbatchload = time.perf_counter()
+                print('Data name:', data)
+
                 data = data.to(device)          # moves x, edge_index, y, etc.
                 optimizer.zero_grad()
 
-                out = model(data.graph['node_feat'], data.graph['edge_index'])
+                out = model(data.x, data.edge_index)
 
                 if cfg.trainingtask == "binnodeclass_mask":
                     # TO ADD LATER
@@ -252,32 +255,36 @@ def main(cfg: DictConfig):
 
                     loss = criterion(out, target)
 
+                # endbatchload = time.perf_counter()
+                # print(f"Learning with this batch took {endbatchload - startbatchload:.6f} seconds")
+
 
             loss.backward()
             optimizer.step()
 
+
             # total_loss += loss.item()
 
-        # avg_train_loss = total_loss / len(train_loader)
+            # avg_train_loss = total_loss / len(train_loader)
 
-        ### Periodic evaluatio and logging
-        if epoch % cfg.eval_step == 0:
-            
-            train_metric, train_loss = evaluate_wloader(model, train_loader, eval_func, criterion, cfg, device)
-            val_metric,   val_loss   = evaluate_wloader(model, val_loader,   eval_func, criterion, cfg, device)
-            test_metric,  _          = evaluate_wloader(model, test_loader,  eval_func, criterion, cfg, device)
+            ### Periodic evaluatio and logging
+            if epoch % cfg.eval_step == 0:
+                
+                train_metric, train_loss = evaluate_wloader(model, train_loader, eval_func, criterion, cfg, device)
+                val_metric,   val_loss   = evaluate_wloader(model, val_loader,   eval_func, criterion, cfg, device)
+                test_metric,  _          = evaluate_wloader(model, test_loader,  eval_func, criterion, cfg, device)
 
-            logger.add_result(run, [train_metric, val_metric, test_metric, val_loss])
+                logger.add_result(run, [train_metric, val_metric, test_metric, val_loss])
 
-            if epoch % cfg.display_step == 0:
+                if epoch % cfg.display_step == 0:
 
-                print_str = f'Epoch: {epoch:02d}, ' + \
-                            f'Train Loss: {train_loss:.4f}, ' + \
-                            f'Train: {100*train_metric:.2f}%, ' + \
-                            f'Val Loss: {val_loss:.4f}, ' + \
-                            f'Val:   {100*val_metric:.2f}%, '  + \
-                            f'Test: {100*test_metric:.2f}%'
-                print(print_str)
+                    print_str = f'Epoch: {epoch:02d}, ' + \
+                                f'Train Loss: {train_loss:.4f}, ' + \
+                                f'Train: {100*train_metric:.2f}%, ' + \
+                                f'Val Loss: {val_loss:.4f}, ' + \
+                                f'Val:   {100*val_metric:.2f}%, '  + \
+                                f'Test: {100*test_metric:.2f}%'
+                    print(print_str)
     
     logger.print_statistics(run)
 
