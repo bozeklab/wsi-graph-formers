@@ -124,7 +124,6 @@ def main(cfg: DictConfig):
 
 
 
-
     ### Display information of dataset (nbr graphs and so on..) ###
     num_graphs = len(graph_list)
     num_nodes_list = [data.num_nodes for data in graph_list]
@@ -215,6 +214,20 @@ def main(cfg: DictConfig):
     ### Training loop ###
     for run in range(cfg.runs):
 
+        if cfg.trainingtask == "binnodeclass_mask":
+            # Mask for target classification nodes (4 or 5)
+            values = torch.tensor([4, 5], device=data.label.device)
+            train_mask = torch.stack([data.label == v for v in values]).any(dim=0)
+            train_mask = train_mask.view(-1)
+
+            binary_labels = (data.label == 5).float().view(-1)
+
+            # -------
+            # I THINK THERE ARE NO CHANGE HERE TO PERFORM COMPARED TO main.py
+            # STILL TO TEST
+            # ----------
+
+
         model.reset_parameters()
         model.to(device)
 
@@ -236,27 +249,40 @@ def main(cfg: DictConfig):
 
             for data in train_loader:           # each `data` is one graph
 
-                startbatchload = time.perf_counter()
-                print('Data name:', data)
-
                 data = data.to(device)          # moves x, edge_index, y, etc.
                 optimizer.zero_grad()
 
                 out = model(data.x, data.edge_index)
 
                 if cfg.trainingtask == "binnodeclass_mask":
-                    # TO ADD LATER
-                    raise ValueError("binnodeclass_mask mode not implemented yet")
-                    
 
+                    # Binary masked loss: supervise only nodes with labels {4,5}
+                    logits = out
+                    if logits.dim() == 2 and logits.size(1) == 1:
+                        logits = logits.squeeze(1)
+                    else:
+                        assert logits.dim() == 1, "Binary head must output [N] or [N,1]."
+
+                    y = data.label.view(-1)
+
+                    # PyTorch 1.9: no torch.isin, so use logical OR
+                    mask_45 = (y == 4) | (y == 5)
+
+                    if not mask_45.any():
+                        continue  # no eligible nodes in this batch
+
+                    y_bin = (y == 5).float()          # 5 -> 1, 4 -> 0
+                    loss = criterion(logits[mask_45], y_bin[mask_45])  # BCEWithLogitsLoss
+
+                    # The logic is quite different than for main.py, both because now we are working with batches
+                    # and because we are working with the train loader instances instead of graph dictionnaries 
+
+                    
                 else:
                     out = F.log_softmax(out, dim=1)
                     target = data.label.squeeze()
 
                     loss = criterion(out, target)
-
-                # endbatchload = time.perf_counter()
-                # print(f"Learning with this batch took {endbatchload - startbatchload:.6f} seconds")
 
 
             loss.backward()
@@ -269,6 +295,10 @@ def main(cfg: DictConfig):
 
             ### Periodic evaluatio and logging
             if epoch % cfg.eval_step == 0:
+
+                if cfg.trainingtask == "binnodeclass_mask":
+                    # TO ADD LATER
+                    raise ValueError("binnodeclass_mask mode not implemented yet")
                 
                 train_metric, train_loss = evaluate_wloader(model, train_loader, eval_func, criterion, cfg, device)
                 val_metric,   val_loss   = evaluate_wloader(model, val_loader,   eval_func, criterion, cfg, device)
@@ -288,7 +318,8 @@ def main(cfg: DictConfig):
     
     logger.print_statistics(run)
 
-
+    ### Print global training stats
+    ### NOT necessary here?
 
     ### Save model ###
     if cfg.save_model:
