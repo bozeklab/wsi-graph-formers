@@ -17,7 +17,7 @@ from dataset import load_dataset, load_dataset_extra
 from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, eval_f1, \
     eval_binary_acc, eval_binary_rocauc, eval_binary_f1, eval_binary_bacc, eval_bacc, \
     to_sparse_tensor, load_fixed_splits, adj_mul, get_gpu_memory_map, count_parameters
-from eval import evaluate_large, evaluate_batch, evaluate_wloader
+from eval import evaluate_large, evaluate_batch, evaluate_wloader, evaluate_binmasked_wloader
 from parse import parse_method
 from collections import Counter
 
@@ -214,18 +214,25 @@ def main(cfg: DictConfig):
     ### Training loop ###
     for run in range(cfg.runs):
 
-        if cfg.trainingtask == "binnodeclass_mask":
-            # Mask for target classification nodes (4 or 5)
-            values = torch.tensor([4, 5], device=data.label.device)
-            train_mask = torch.stack([data.label == v for v in values]).any(dim=0)
-            train_mask = train_mask.view(-1)
+        # if cfg.trainingtask == "binnodeclass_mask":
 
-            binary_labels = (data.label == 5).float().view(-1)
+            # if cfg.nodestype == 'notumor': 
+            #     # Mask for target classification nodes (4 or 5)
+            #     values = torch.tensor([4, 5], device=data.label.device)
+            #     train_mask = torch.stack([data.label == v for v in values]).any(dim=0)
+            #     train_mask = train_mask.view(-1)
 
-            # -------
-            # I THINK THERE ARE NO CHANGE HERE TO PERFORM COMPARED TO main.py
-            # STILL TO TEST
-            # ----------
+            #     binary_labels = (data.label == 5).float().view(-1)
+
+
+            # else: 
+            #     #MORE USEFUL
+            #     # Mask for target classification nodes (5 or 6)
+            #     values = torch.tensor([5, 6], device=data.label.device)
+            #     train_mask = torch.stack([data.label == v for v in values]).any(dim=0)
+            #     train_mask = train_mask.view(-1)
+
+            #     binary_labels = (data.label == 6).float().view(-1)
 
 
         model.reset_parameters()
@@ -256,28 +263,59 @@ def main(cfg: DictConfig):
 
                 if cfg.trainingtask == "binnodeclass_mask":
 
-                    # Binary masked loss: supervise only nodes with labels {4,5}
-                    logits = out
-                    if logits.dim() == 2 and logits.size(1) == 1:
-                        logits = logits.squeeze(1)
+                    if not cfg.nodestype == 'notumor': 
+
+                        # Binary masked loss: supervise only nodes with labels {4,5}
+                        logits = out
+                        if logits.dim() == 2 and logits.size(1) == 1:
+                            logits = logits.squeeze(1)
+                        else:
+                            assert logits.dim() == 1, "Binary head must output [N] or [N,1]."
+
+                        y = data.label.view(-1)
+
+                        # PyTorch 1.9: no torch.isin, so use logical OR
+                        mask_45 = (y == 4) | (y == 5)
+
+                        if not mask_45.any():
+                            continue  # no eligible nodes in this batch
+
+                        y_bin = (y == 5).float()          # 5 -> 1, 4 -> 0
+                        loss = criterion(logits[mask_45], y_bin[mask_45])  # BCEWithLogitsLoss
+
+                        # The logic is quite different than for main.py, both because now we are working with batches
+                        # and because we are working with the train loader instances instead of graph dictionnaries 
+
+
                     else:
-                        assert logits.dim() == 1, "Binary head must output [N] or [N,1]."
 
-                    y = data.label.view(-1)
+                        raise ValueError("No notumor mode for several graph dataset implemented yet.")
 
-                    # PyTorch 1.9: no torch.isin, so use logical OR
-                    mask_45 = (y == 4) | (y == 5)
+                        # # MOST USEFUL
 
-                    if not mask_45.any():
-                        continue  # no eligible nodes in this batch
+                        # # Binary masked loss: supervise only nodes with labels {5,6}
+                        # logits = out
+                        # if logits.dim() == 2 and logits.size(1) == 1:
+                        #     logits = logits.squeeze(1)
+                        # else:
+                        #     assert logits.dim() == 1, "Binary head must output [N] or [N,1]."
 
-                    y_bin = (y == 5).float()          # 5 -> 1, 4 -> 0
-                    loss = criterion(logits[mask_45], y_bin[mask_45])  # BCEWithLogitsLoss
+                        # y = data.label.view(-1)
 
-                    # The logic is quite different than for main.py, both because now we are working with batches
-                    # and because we are working with the train loader instances instead of graph dictionnaries 
+                        # # PyTorch 1.9: no torch.isin, so use logical OR
+                        # mask_56 = (y == 5) | (y == 6)
 
-                    
+                        # if not mask_56.any():
+                        #     continue  # no eligible nodes in this batch
+
+                        # y_bin = (y == 6).float()          # 6 -> 1, 5 -> 0
+                        # loss = criterion(logits[mask_56], y_bin[mask_56])  # BCEWithLogitsLoss
+
+                        # # The logic is quite different than for main.py, both because now we are working with batches
+                        # # and because we are working with the train loader instances instead of graph dictionnaries 
+                
+
+
                 else:
                     out = F.log_softmax(out, dim=1)
                     target = data.label.squeeze()
@@ -297,12 +335,15 @@ def main(cfg: DictConfig):
             if epoch % cfg.eval_step == 0:
 
                 if cfg.trainingtask == "binnodeclass_mask":
-                    # TO ADD LATER
-                    raise ValueError("binnodeclass_mask mode not implemented yet")
-                
-                train_metric, train_loss = evaluate_wloader(model, train_loader, eval_func, criterion, cfg, device)
-                val_metric,   val_loss   = evaluate_wloader(model, val_loader,   eval_func, criterion, cfg, device)
-                test_metric,  _          = evaluate_wloader(model, test_loader,  eval_func, criterion, cfg, device)
+                    train_metric, train_loss = evaluate_binmasked_wloader(model, train_loader, eval_func, criterion, cfg, device)
+                    val_metric,   val_loss   = evaluate_binmasked_wloader(model, val_loader,   eval_func, criterion, cfg, device)
+                    test_metric,  _          = evaluate_binmasked_wloader(model, test_loader,  eval_func, criterion, cfg, device)
+                    
+
+                else:
+                    train_metric, train_loss = evaluate_wloader(model, train_loader, eval_func, criterion, cfg, device)
+                    val_metric,   val_loss   = evaluate_wloader(model, val_loader,   eval_func, criterion, cfg, device)
+                    test_metric,  _          = evaluate_wloader(model, test_loader,  eval_func, criterion, cfg, device)
 
                 logger.add_result(run, [train_metric, val_metric, test_metric, val_loss])
 

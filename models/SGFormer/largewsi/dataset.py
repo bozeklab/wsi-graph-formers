@@ -88,7 +88,7 @@ class NCDataset(object):
         return '{}({})'.format(self.__class__.__name__, len(self))
 
 
-def load_dataset(data_dir, dataname, sub_dataname=''):
+def load_dataset(data_dir, dataname, sub_dataname='', ):
     """ Loader for NCDataset 
         Returns NCDataset 
     """
@@ -139,9 +139,9 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
     elif dataname == 'skinwsi':
         dataset = load_skinwsi_dataset(data_dir, dataname)
     elif dataname == 'infermulticlass':
-        dataset = load_infer_skinwsi(data_dir, dataname)
+        dataset = load_infer_skinwsi(data_dir, dataname, sub_dataname)
     elif dataname == 'inferbinary':
-        dataset = load_infer_binskinwsi(data_dir, dataname)
+        dataset = load_infer_binskinwsi(data_dir, dataname, sub_dataname)
     else:
         raise ValueError('Invalid dataname')
     return dataset
@@ -341,13 +341,13 @@ def load_skinwsi_dataset(data_dir,
 ######
 # THIS SHOULD BE MODIFIED IN THE FUTURE TO ALSO MATCH SEVERAL GRAPH INFERENCE 
 #####
-def load_infer_skinwsi(data_dir, dataname,):
-    graphname = "graph_r50_5702-10_simplified_3-hops-ngbr.pt" 
+def load_infer_skinwsi(data_dir, infer_graphtype, data_name):
+    graphname = data_name
     graph_path = data_dir + graphname
     graph_dict = torch.load(graph_path)
 
     # Create NCDataset
-    dataset = NCDataset(dataname)
+    dataset = NCDataset(infer_graphtype)
 
     # We did not import the labels (node class) as they will be infered
     edge_index = graph_dict['edge_index']
@@ -373,13 +373,13 @@ def load_infer_skinwsi(data_dir, dataname,):
 ######
 # THIS SHOULD BE MODIFIED IN THE FUTURE TO ALSO MATCH SEVERAL GRAPH INFERENCE 
 #####
-def load_infer_binskinwsi(data_dir, dataname,):
-    graphname = "predictions_infermulticlass_r50_5702-10_simplified_3_sgformer_skinwsi_run20250721-164459.pt" 
+def load_infer_binskinwsi(data_dir, infer_graphtype, data_name):
+    graphname = data_name
     graph_path = data_dir + graphname
     graph_dict = torch.load(graph_path)
 
     # Create NCDataset
-    dataset = NCDataset(dataname)
+    dataset = NCDataset(infer_graphtype)
 
     # We did not import the labels (node class) as they will be infered
     edge_index = graph_dict['edge_index']

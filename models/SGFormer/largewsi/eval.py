@@ -120,6 +120,7 @@ def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg,
     labels = dataset.label.view(-1)
     binary_labels = (labels == 5).float()   # 4 → 0, 5 → 1
     class_mask = (labels == 4) | (labels == 5)
+    #  STILL TO TEST FOR  not (cfg.nodestype == 'notumor')  
 
     def filtered_eval(split_name):
         idx = split_idx[split_name]
@@ -140,15 +141,80 @@ def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg,
 
     return train_metric, valid_metric, test_metric, valid_loss, out
 
+    # target = batch.label.squeeze().to(torch.long)
+    # loss also needs to change # target = batch.label.to(torch.float)
 
 
 
 
-# target = batch.label.squeeze().to(torch.long)
-# loss also needs to change
-# target = batch.label.to(torch.float)
+@torch.no_grad()
+def evaluate_binmasked_wloader(model, loader, eval_func, criterion, cfg, device, threshold_logit: float = 0.0):
+    """
+    Binary masked evaluation on a PyG DataLoader:
+      - Uses only nodes with labels in {4,5}
+      - Maps 5 -> 1 (positive), 4 -> 0 (negative)
+      - Computes loss with BCEWithLogitsLoss on masked nodes
+      - For the metric, thresholds logits at `threshold_logit` (default 0) to get class predictions
+    Returns:
+      metric (float), avg_loss (float)
+    """
+    model.eval()
+    all_preds = []
+    all_trues = []
+    loss_sum = 0.0
+    total_masked = 0
 
+    for batch in loader:
+        batch = batch.to(device)
+        logits = model(batch.x, batch.edge_index)
 
+        # ensure shape [N]
+        if logits.dim() == 2 and logits.size(1) == 1:
+            logits = logits.squeeze(1)
+        else:
+            assert logits.dim() == 1, "Binary head must output [N] or [N,1]."
+
+        y = batch.label.view(-1)
+
+        if cfg.nodestype == 'notumor':
+            raise ValueError("No notumor mode for several graph dataset implemented yet.")
+
+        else:
+            # create Binary nodes 
+            # 5 -> 1, 4 -> 0
+            mask_45 = (y == 4) | (y == 5)
+            if not mask_45.any():
+                continue
+
+            y_bin = (y == 5).float()  # 5 -> 1, 4 -> 0
+
+            # loss on masked nodes only
+            masked_logits = logits[mask_45]
+            masked_targets = y_bin[mask_45]
+            loss = criterion(masked_logits, masked_targets)
+            m = mask_45.sum().item()
+            loss_sum += loss.item() * m
+            total_masked += m
+            # normally there is no need to calculate the loss inside the loop, could create a variable "mask"
+            # and run it outisde, but readibility is better this way 
+
+        # predictions for metric: sign(logit) -> class
+        y_pred = (masked_logits > threshold_logit).long()
+
+        # keep the same convention as evaluate_binary_masked (true as 0/1 float)
+        all_preds.append(y_pred.cpu())
+        all_trues.append(masked_targets.cpu())
+
+    if total_masked == 0:
+        # no eligible nodes across the loader
+        return 0.0, 0.0
+
+    y_pred_all = torch.cat(all_preds, dim=0)            # (M,)
+    y_true_all = torch.cat(all_trues, dim=0)            # (M,) floats in {0.,1.}
+
+    metric = eval_func(y_true_all, y_pred_all)
+    avg_loss = loss_sum / total_masked
+    return metric, avg_loss
 
 
 

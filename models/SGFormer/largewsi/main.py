@@ -194,6 +194,7 @@ def main(cfg: DictConfig):
         train_idx = split_idx['train'].to(device)
 
         if cfg.trainingtask == "binnodeclass_mask":
+
             # Mask for target classification nodes (4 or 5)
             values = torch.tensor([4, 5], device=dataset.label.device)
             train_mask = torch.stack([dataset.label == v for v in values]).any(dim=0)

@@ -96,10 +96,14 @@ customload: True                       # if True, can load extra parameters spec
 # inference
 infer_graphtype: infermulticlass      # [infer-multiclass, inferbinary]
 model_name: ""
-pred_input_dir: predictions/
+nbrclass_toinfer: 5
+
+pred_input_dir: ../../Data_General/Predictions/input_wsigraph/
+pred_input_name: graph_r50_4539-14_simplified_3-hops-ngbr.pt
 # pred_input_dir: ../../Data_General/Predictions/input_wsigraph/
-pred_output_name: predicted_r50_5702-10_simplified_3
+# "predictions_infermulticlass_r50_5702-10_simplified_3_sgformer_skinwsi_run20250721-164459.pt" 
+
 pred_output_dir: predictions/
-nbrclass_toinfer: 5 
+pred_output_name: graph_r50_4539-14_simplified_3-hops-ngbr 
 
 

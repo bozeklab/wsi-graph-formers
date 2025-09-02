@@ -27,7 +27,7 @@ def infer(cfg: DictConfig):
     #     print("  -", override)
 
     device = torch.device(f"cuda:{cfg.device}" if torch.cuda.is_available() else "cpu")
-    infergraph = load_dataset(cfg.pred_input_dir, cfg.infer_graphtype, cfg.sub_dataset)
+    infergraph = load_dataset(cfg.pred_input_dir, cfg.infer_graphtype, sub_dataname=cfg.pred_input_name)
 
     ### Basic information of inputgraphs 
     n = infergraph.graph['num_nodes']
@@ -36,14 +36,26 @@ def infer(cfg: DictConfig):
     c = cfg.nbrclass_toinfer
     d = infergraph.graph['node_feat'].shape[1]
 
-    print(f"\ninputgraph {cfg.infer_graphtype} | num nodes {n} | num edge {e} | num node feats {d} | num classes {c}")
+    print(f"\ninputgraph: {cfg.pred_input_name} | graph type: {cfg.infer_graphtype}\
+    | num nodes: {n} | num edge: {e} | num node feats: {d} | num classes: {c}")
 
     # # adapt infer if we use the binary classification model 
     if cfg.nbrclass_toinfer == 2:
-        # Mask for target classification nodes (4 or 5)
-        values = torch.tensor([4], device=infergraph.label.device)
-        infer_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
-        infer_mask = infer_mask.view(-1)
+
+        if cfg.nodestype == 'notumor': 
+            values = torch.tensor([4], device=infergraph.label.device)
+            infer_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
+            infer_mask = infer_mask.view(-1)
+
+        else:
+            # the most useful 
+            # Mask for target classification nodes (4 or 5)
+            values = torch.tensor([4, 5], device=infergraph.label.device)
+            train_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
+            train_mask = train_mask.view(-1)
+            # values = torch.tensor([4], device=infergraph.label.device)
+            # infer_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
+            # infer_mask = infer_mask.view(-1)
 
 
     ### Load method  
@@ -71,8 +83,19 @@ def infer(cfg: DictConfig):
                 infergraph.graph['edge_index'].to(device)
             ).squeeze(1)  
 
-            # Identify nodes with label == 4 (the only ones to classify)
-            infer_mask = (infergraph.label == 4).to(device)
+            if cfg.nodestype == 'notumor': 
+                # Identify nodes with label == 4 (the only ones to classify)
+                infer_mask = (infergraph.label == 4).to(device)
+
+            else:
+                # the most useful 
+                y = infergraph.label.view(-1)
+
+                # PyTorch 1.9: no torch.isin, so use logical OR
+                infer_mask = (y == 4) | (y == 5)
+
+                # infer_mask = (infergraph.label == 5).float().view(-1) 
+
 
             # Initialize prediction tensor: fill everything with class 2 (for nodes not to classify)
             pred = torch.full_like(infergraph.label, fill_value=2, dtype=torch.long).to(device)
