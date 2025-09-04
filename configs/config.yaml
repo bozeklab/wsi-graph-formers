@@ -14,6 +14,9 @@ pyg_graphs/r50/"
 simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 simplified_pyg_graphs/r50/"
 
+split_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+simplified_pyg_graphs/r50_splitted/"
+
 visualization_path: ""
 
 
@@ -27,6 +30,10 @@ timing: True
 
 # graph simplification
 max_hops: 3
+ 
+# graph splitting
+split_from_simplified: True
+nbr_subgraphs: 20 
 
 # graph visualization
 graphtype: dataset  #[dataset, binary, infer]

@@ -214,27 +214,6 @@ def main(cfg: DictConfig):
     ### Training loop ###
     for run in range(cfg.runs):
 
-        # if cfg.trainingtask == "binnodeclass_mask":
-
-            # if cfg.nodestype == 'notumor': 
-            #     # Mask for target classification nodes (4 or 5)
-            #     values = torch.tensor([4, 5], device=data.label.device)
-            #     train_mask = torch.stack([data.label == v for v in values]).any(dim=0)
-            #     train_mask = train_mask.view(-1)
-
-            #     binary_labels = (data.label == 5).float().view(-1)
-
-
-            # else: 
-            #     #MORE USEFUL
-            #     # Mask for target classification nodes (5 or 6)
-            #     values = torch.tensor([5, 6], device=data.label.device)
-            #     train_mask = torch.stack([data.label == v for v in values]).any(dim=0)
-            #     train_mask = train_mask.view(-1)
-
-            #     binary_labels = (data.label == 6).float().view(-1)
-
-
         model.reset_parameters()
         model.to(device)
 
@@ -289,32 +268,7 @@ def main(cfg: DictConfig):
 
                     else:
 
-                        raise ValueError("No notumor mode for several graph dataset implemented yet.")
-
-                        # # MOST USEFUL
-
-                        # # Binary masked loss: supervise only nodes with labels {5,6}
-                        # logits = out
-                        # if logits.dim() == 2 and logits.size(1) == 1:
-                        #     logits = logits.squeeze(1)
-                        # else:
-                        #     assert logits.dim() == 1, "Binary head must output [N] or [N,1]."
-
-                        # y = data.label.view(-1)
-
-                        # # PyTorch 1.9: no torch.isin, so use logical OR
-                        # mask_56 = (y == 5) | (y == 6)
-
-                        # if not mask_56.any():
-                        #     continue  # no eligible nodes in this batch
-
-                        # y_bin = (y == 6).float()          # 6 -> 1, 5 -> 0
-                        # loss = criterion(logits[mask_56], y_bin[mask_56])  # BCEWithLogitsLoss
-
-                        # # The logic is quite different than for main.py, both because now we are working with batches
-                        # # and because we are working with the train loader instances instead of graph dictionnaries 
-                
-
+                        raise ValueError("No notumor mode for several graph dataset implemented yet.") 
 
                 else:
                     out = F.log_softmax(out, dim=1)
