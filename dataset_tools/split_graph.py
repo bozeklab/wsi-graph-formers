@@ -13,7 +13,7 @@ from torch_geometric.data import Data
 from torch_geometric.utils import subgraph as node_subgraph
 import networkx as nx
 
-from typing import List
+from typing import Dict
 from omegaconf import DictConfig
 import hydra
 from configs.schema import GraphConfig
@@ -24,84 +24,71 @@ from models.SGFormer.largewsi.dataset import NCDataset
 
 
 
-def _extract_cluster_subgraph(inputgraph, node_mask: torch.Tensor) -> Data:
+def extract_cluster_subgraph_dict(inputgraph, node_mask: torch.Tensor) -> Dict[str, torch.Tensor]:
     """
-    Build an induced subgraph on nodes where `node_mask` is True, preserving edges and edge_feat.
+    Induced subgraph on nodes where `node_mask` is True, returned as a dict with:
+    {'x', 'y', 'edge_index', 'centroid'}.
 
     Parameters
     ----------
     inputgraph : object
-        An object with attributes:
-            - edge_index : LongTensor[2, E]
-            - edge_feat  : Optional[Tensor[E, ...]]
-            - node_feat  : Tensor[N, F]
-            - centroids  : Tensor[N, d]   (your spatial coords)
-            - num_nodes  : int
-            - label      : Optional[Tensor] (can be graph-level or node-level)
+        Holds:
+          - edge_index : LongTensor[2, E]
+          - node_feat  : Tensor[N, F]
+          - centroids  : Tensor[N, d]
+          - num_nodes  : int
+          - label      : Tensor[...] (node-level or graph-level)
+          - edge_feat  : Optional[Tensor[E, ...]] (ignored for output)
     node_mask : torch.Tensor
         Bool mask of shape [N] selecting nodes to keep.
 
     Returns
     -------
-    torch_geometric.data.Data
-        PyG Data with:
-            - edge_index (relabelled)
-            - edge_attr  (if edge_feat present)
-            - x          (sliced from node_feat)
-            - centroids  (sliced)
-            - y          (sliced if node-level, else copied if graph-level)
-            - num_nodes
+    dict
+        {
+          'x'         : Tensor[n', F],
+          'y'         : Tensor[n'] (node-level) or original label (graph-level),
+          'edge_index': LongTensor[2, e'],
+          'centroid'  : Tensor[n', d],
+        }
     """
     if node_mask.dtype != torch.bool:
         node_mask = node_mask.bool()
 
-    # Kept node indices
-    node_idx = node_mask.nonzero(as_tuple=False).view(-1)  # [n']
     N = int(inputgraph.num_nodes)
+    node_idx = node_mask.nonzero(as_tuple=False).view(-1)      # [n']
 
-    # Original edges/edge features
-    ei = inputgraph.edge_index                     # [2, E]
-    ea = getattr(inputgraph, "edge_feat", None)    # Optional[E, ...]
+    # Original graph
+    ei = inputgraph.edge_index                                  # [2, E]
+    ea = getattr(inputgraph, "edge_feat", None)                 # optional, not returned
 
-    # Edge mask on ORIGINAL edges (PyG 1.7 doesn’t return it)
-    edge_mask = node_mask[ei[0]] & node_mask[ei[1]]  # [E], True if both endpoints kept
-
-    # Induced subgraph with node relabeling
-    new_ei, new_ea = node_subgraph(
+    # Induced subgraph with relabeling (PyG 1.7-safe)
+    new_ei, _ = node_subgraph(
         subset=node_idx,
         edge_index=ei,
-        edge_attr=ea,
+        edge_attr=ea,           # passed only so PyG filters consistently; we don't return it
         relabel_nodes=True,
         num_nodes=N,
     )
 
-    # Build PyG Data for the subgraph (explicit, no arbitrary iteration)
-    out = Data()
-    out.edge_index = new_ei
-    out.num_nodes = int(node_idx.numel())
+    # x / centroid
+    x_out = inputgraph.node_feat[node_idx] if getattr(inputgraph, "node_feat", None) is not None else None
+    c_out = inputgraph.centroids[node_idx] if getattr(inputgraph, "centroids", None) is not None else None
 
-    if ea is not None:
-        out.edge_attr = new_ea
+    # y: node-level vs graph-level
+    y_in = getattr(inputgraph, "label", None)
+    if y_in is not None and torch.is_tensor(y_in) and y_in.dim() > 0 and y_in.size(0) == N:
+        y_out = y_in[node_idx]          # node-level labels
+    else:
+        y_out = y_in                    # graph-level label or None
 
-    # Node features and centroids
-    if getattr(inputgraph, "node_feat", None) is not None:
-        out.x = inputgraph.node_feat[node_idx]
-    if getattr(inputgraph, "centroids", None) is not None:
-        # Keep your field name 'centroids' (you can also duplicate to 'pos' if desired)
-        out.centroids = inputgraph.centroids[node_idx]
-        # out.pos = out.centroids  # optional alias if you want to use PyG conventions
+    return {
+        'x': x_out,
+        'y': y_out,
+        'edge_index': new_ei,
+        'centroid': c_out,
+    }
 
-    # Labels: keep node-level vs graph-level
-    lbl = getattr(inputgraph, "label", None)
-    if lbl is not None and torch.is_tensor(lbl):
-        if lbl.dim() > 0 and lbl.size(0) == N:  # node-level labels
-            out.y = lbl[node_idx]
-        else:                                   # graph-level label
-            out.y = lbl
-    elif lbl is not None:
-        out.y = lbl  # non-tensor graph-level metadata
-
-    return out
 
 
 
@@ -110,7 +97,7 @@ def torch_kmeans_subgraphs(
     K: int,
     num_iters: int = 20,
     tol: float = 1e-4
-    ) -> List[Data]:
+    ) -> Dict[str, torch.Tensor]:
     """
     Partition nodes into K spatial clusters via k-means on `inputgraph.centroids`
     and return the induced subgraphs (edges preserved within clusters).
@@ -167,13 +154,13 @@ def torch_kmeans_subgraphs(
             break
         centers = new_centers
 
-    # 5) Build induced subgraphs for each cluster (edges preserved inside)
-    return [_extract_cluster_subgraph(inputgraph, labels == k) for k in range(K)]
+    # 5) Build induced subgraphs for each cluster (edges preserved inside) (dicts)
+    return [extract_cluster_subgraph_dict(inputgraph, labels == k) for k in range(K)]
 
 
 
 def save_subgraphs(
-    subgraphs: List[Data],
+    subgraphs: Dict[str, torch.Tensor],
     output_dir: str,
     inputname: str,
     prefix: str = "subgraph"
