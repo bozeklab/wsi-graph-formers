@@ -41,7 +41,12 @@ backend: pyg  # [nx, pyg]
 max_nodes_display: 300000
 figsize: [10, 10]
 
-
-
-
+# IN PROGRESS / TEMP
+# training dataset for baseline 
+json_input_folder:
+wsi_input_folder:
+output_baselineset:
+tmp_dir: 
+tile_size: 256
+no_bbox: False 
 

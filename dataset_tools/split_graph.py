@@ -12,8 +12,8 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import subgraph as node_subgraph
 import networkx as nx
-
 from typing import Dict
+
 from omegaconf import DictConfig
 import hydra
 from configs.schema import GraphConfig
