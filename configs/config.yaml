@@ -3,10 +3,13 @@ defaults:
 
 ### all paths
 
+wsi_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+previous_steps/all_wsis/"
+
 json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_1/"
 
 pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-graphs/r50/"
+graphs/r50_mortex/"
 
 conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 pyg_graphs/r50/"
@@ -24,9 +27,14 @@ visualization_path: ""
 ### graphs
 
 # generate graph (pickle format)
-pickle_output_corename: "graph_r25_"
-radius: 25
+pickle_output_corename: "graph_r50_mortex_"
+radius: 50
 timing: True 
+
+# generate graph DEV
+with_texture: True
+typeweight: True 
+
 
 # graph simplification
 max_hops: 3
@@ -41,12 +49,11 @@ backend: pyg  # [nx, pyg]
 max_nodes_display: 300000
 figsize: [10, 10]
 
-# IN PROGRESS / TEMP
-# training dataset for baseline 
-json_input_folder:
-wsi_input_folder:
-output_baselineset:
-tmp_dir: 
+# baseline training dataset 
+json_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+previous_steps/hvn_output_fullwsi/"
+output_baselineset: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/version1/"
+tmp_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/version1/tempcache/"
 tile_size: 256
 no_bbox: False 
 

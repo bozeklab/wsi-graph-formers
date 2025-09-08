@@ -14,12 +14,16 @@ import numpy as np
 import cv2
 from tqdm import tqdm
 import openslide  # provides slide.dimensions == (W, H) at level 0
-
+from collections import OrderedDict
+import logging
 
 from omegaconf import DictConfig
 import hydra
+from hydra.utils import to_absolute_path
 from configs.schema import GraphConfig
 
+
+log = logging.getLogger(__name__)
 
 
 #### geometry helpers 
@@ -297,64 +301,87 @@ def stage_a_bin_instances_to_tiles(
     tmp_dir: Path,
     assume_bbox_in_json: bool = True,
     min_polygon_points: int = 3,
+    max_open_shards: int = 512,   # NEW: cap concurrently-open shard files
 ):
     """
-    Stream the HoVer-Net JSON and write per-tile JSONL shards for memory-safe rasterization.
-
-    Each shard file `shard_{ty}_{tx}.jsonl` contains one JSON object per line:
-    `{"id": <int>, "type": <int>, "contour": [[x,y], ...]}` for instances overlapping that tile.
+    Stream the HoVer-Net JSON and write per-tile JSONL shards:
+    shard_{ty}_{tx}.jsonl with lines: {"id": int, "type": int, "contour": [[x,y], ...]}
 
     Parameters
     ----------
-    json_path : str
-        Path to full-WSI HoVer-Net JSON (top-level dict keyed by instance id).
-    W, H : int
-        Whole-slide width and height in pixels (level 0).
-    tile : int
-        Tile size (e.g., 256).
-    tmp_dir : pathlib.Path
-        Scratch directory where shard files will be written.
-    assume_bbox_in_json : bool, default True
-        If True and the instance record has 'bbox', use it; otherwise compute from 'contour'.
-    min_polygon_points : int, default 3
-        Minimum number of points required to accept a polygon.
+    ...
+    max_open_shards : int
+        Max number of shard files kept open at once. When exceeded, the least
+        recently used file handle is closed to stay within OS limits.
     """
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    shard_files: Dict[Tuple[int, int], Any] = {}
 
-    for inst_id_str, inst in tqdm(iter_top_level_kv(json_path),
-                                  desc=f"[{Path(json_path).stem}] streaming instances",
-                                  unit="nuc"):
-        # robust id parsing
-        try:
-            inst_id = int(inst_id_str)
-        except Exception:
+    # LRU of open file handles: key=(tx,ty) -> file object
+    open_fhs: "OrderedDict[Tuple[int,int], Any]" = OrderedDict()
+
+    def get_writer(tx: int, ty: int):
+        """Return an open file handle for (tx,ty), respecting the LRU cap."""
+        key = (tx, ty)
+        fh = open_fhs.get(key)
+        if fh is not None:
+            # mark as most recently used
+            open_fhs.move_to_end(key, last=True)
+            return fh
+
+        # Need a new handle
+        shard_path = tmp_dir / f"shard_{ty}_{tx}.jsonl"
+        fh = open(shard_path, 'a', encoding='utf-8')
+
+        open_fhs[key] = fh
+        open_fhs.move_to_end(key, last=True)
+
+        # Enforce cap
+        if len(open_fhs) > max_open_shards:
+            old_key, old_fh = open_fhs.popitem(last=False)  # least recently used
             try:
-                inst_id = int(str(inst_id_str))
+                old_fh.flush()
+            finally:
+                old_fh.close()
+        return fh
+
+    try:
+        for inst_id_str, inst in tqdm(iter_top_level_kv(json_path),
+                                      desc=f"[{Path(json_path).stem}] streaming instances",
+                                      unit="nuc"):
+            # robust id
+            try:
+                inst_id = int(inst_id_str)
             except Exception:
+                try:
+                    inst_id = int(str(inst_id_str))
+                except Exception:
+                    continue
+
+            contour = inst.get('contour')
+            if not contour or len(contour) < min_polygon_points:
                 continue
+            inst_type = int(inst.get('type', 0))
 
-        contour = inst.get('contour')
-        if not contour or len(contour) < min_polygon_points:
-            continue
-        inst_type = int(inst.get('type', 0))
+            if assume_bbox_in_json and 'bbox' in inst:
+                xmin, ymin = inst['bbox'][0]
+                xmax, ymax = inst['bbox'][1]
+            else:
+                contour_np = np.asarray(contour, dtype=np.float64)
+                xmin, ymin, xmax, ymax = bbox_from_contour(contour_np)
 
-        if assume_bbox_in_json and 'bbox' in inst:
-            xmin, ymin, xmax, ymax = inst['bbox']
-        else:
-            contour_np = np.asarray(contour, dtype=np.float64)
-            xmin, ymin, xmax, ymax = bbox_from_contour(contour_np)
+            # Write one record into every overlapping tile's shard
+            rec = json.dumps({"id": inst_id, "type": inst_type, "contour": contour}) + "\n"
+            for tx, ty in tiles_overlapping_bbox(xmin, ymin, xmax, ymax, tile, W, H):
+                fh = get_writer(tx, ty)
+                fh.write(rec)
+    finally:
+        # Close any remaining open files
+        for fh in open_fhs.values():
+            try:
+                fh.flush()
+            finally:
+                fh.close()
 
-        for tx, ty in tiles_overlapping_bbox(xmin, ymin, xmax, ymax, tile, W, H):
-            shard_path = tmp_dir / f"shard_{ty}_{tx}.jsonl"
-            if (tx, ty) not in shard_files:
-                shard_files[(tx, ty)] = open(shard_path, 'a', encoding='utf-8')
-            shard_files[(tx, ty)].write(json.dumps(
-                {"id": inst_id, "type": inst_type, "contour": contour}
-            ) + "\n")
-
-    for fh in shard_files.values():
-        fh.close()
 
 
 
@@ -429,7 +456,7 @@ def stage_b_rasterize_tiles(
 
 
 def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
-                      tile_size: int, tmp_root: Path, no_bbox: bool):
+                      tile_size: int, tmp_root: Path, no_bbox: bool) -> bool:
     """
     Convert a single slide (JSON + WSI) into PanNuke-style tiles.
  
@@ -447,11 +474,26 @@ def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
         Scratch directory to hold intermediate shard files per slide.
     no_bbox : bool
         If True, ignore any 'bbox' in JSON and always compute from 'contour'.
+
+    Returns
+    -------
+    bool
+        True if tile(s) were processed or already existed; False if WSI is missing.
     """
     stem = json_file.stem
     wsi_path = find_matching_wsi(stem, wsi_dir)
     if wsi_path is None:
-        raise FileNotFoundError(f"No WSI found in {wsi_dir} for {stem}.*")
+        log.warning(f"[skip] No matching WSI found in '{wsi_dir}' for basename '{stem}'.")
+        return False
+    # if wsi_path is None:
+    #     raise FileNotFoundError(f"No WSI found in {wsi_dir} for {stem}.*")
+
+    # Check for existence of the first tile (tile 0,0) to decide skipping
+    sample_tile = out_root / f"{stem}_tile_0_0.npz"
+    if sample_tile.exists():
+        log.info(f"[skip] Output already exists for '{stem}' (found {sample_tile.name}).")
+        return True
+
 
     W, H = read_wsi_size_with_openslide(wsi_path)  # (W, H)
     shards_dir = tmp_root / f"shards_{stem}"
@@ -476,7 +518,8 @@ def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
         shards_dir.rmdir()
     except OSError:
         pass
-
+    
+    return True
 
 
 
@@ -484,57 +527,66 @@ def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
 
-    json_dir = cfg.json_input_folder
-    wsi_dir = cfg.wsi_input_folder
-    out_dir = cfg.output_baselineset 
-    tmp_dir = cfg.tmp_dir 
-    tile_size = cfg.tile_size
-    no_bbox = cfg.no_bbox
+    # Resolve against the original cwd (stable across Hydra run dirs)
+    json_dir = Path(to_absolute_path(str(cfg.json_input_folder)))
+    wsi_dir  = Path(to_absolute_path(str(cfg.wsi_input_folder)))
+    out_dir  = Path(to_absolute_path(str(cfg.output_baselineset)))
+    tmp_dir  = Path(to_absolute_path(str(cfg.tmp_dir)))
 
-    # in case output_baselineset does not exists 
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
-    # in case tmp_dir does not exists 
-    if not os.path.exists(tmp_dir):
-        os.mkdir(tmp_dir)
+    tile_size = int(cfg.tile_size)
+    no_bbox   = bool(cfg.no_bbox)
 
+    # Ensure dirs exist
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
+    # Now Path.glob() works
     json_files = sorted(json_dir.glob("*.json"))
     if not json_files:
-        raise RuntimeError(f"No JSON files found in {json_dir}")
+        log.error(f"No JSON files found in {json_dir}")
+        return
+    # if not json_files:
+    #     raise RuntimeError(f"No JSON files found in {json_dir}")
+
+    processed = 0
+    skipped   = 0
 
     for jf in json_files:
-        process_one_slide(
+        ok = process_one_slide(
             json_file=jf,
             wsi_dir=wsi_dir,
             out_root=out_dir,
-            tile_size=int(tile_size),
+            tile_size=tile_size,
             tmp_root=tmp_dir,
             no_bbox=no_bbox,
         )
+        if ok:
+            processed += 1
+        else:
+            skipped += 1
 
+    # best-effort tmp cleanup (will fail if non-empty; that's fine)
     try:
         tmp_dir.rmdir()
     except OSError:
         pass
 
+    log.info(f"Done. Processed: {processed} | Skipped (missing WSI): {skipped}")
 
 """
 Stream a full-WSI HoVer-Net JSON (stdlib json only) and emit PanNuke-style tiles (.npz),
 auto-reading WSI width/height from a slide in another folder via OpenSlide.
 
 Requirements:
-  pip install numpy opencv-python tqdm openslide-python openslide-bin
+pip install numpy opencv-python tqdm openslide-python openslide-bin
 
 Outputs per tile (.npz):
-  - inst_map: (tile, tile) int32   (tile-local instance IDs 1..K)
-  - type_map: (tile, tile) uint8   (0..5; 0=background)
+- inst_map: (tile, tile) int32   (tile-local instance IDs 1..K)
+- type_map: (tile, tile) uint8   (0..5; 0=background)
 """
-
 
 
 if __name__ == "__main__":
     main()
-
 
 
