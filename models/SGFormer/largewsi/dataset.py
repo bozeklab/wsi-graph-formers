@@ -138,6 +138,8 @@ def load_dataset(data_dir, dataname, sub_dataname='', ):
         dataset = load_skinwsi_onegraphdataset(data_dir, dataname)
     elif dataname == 'skinwsi':
         dataset = load_skinwsi_dataset(data_dir, dataname)
+    elif dataname == 'subgraphs-skinwsi':
+        dataset = load_subgraphs_skinwsi_dataset(data_dir, dataname)
     elif dataname == 'infermulticlass':
         dataset = load_infer_skinwsi(data_dir, dataname, sub_dataname)
     elif dataname == 'inferbinary':
@@ -157,8 +159,6 @@ def load_dataset_extra(data_dir,
     ):
     """ Loader for NCDataset with extra arguments 
         Returns NCDataset 
-
-        Only compatible with skinwsi
     """
     print(dataname)
     if dataname == 'onegraphskinwsi':
@@ -177,6 +177,15 @@ def load_dataset_extra(data_dir,
             train_prop=train_prop, 
             valid_prop=valid_prop 
             )
+    elif dataname == 'subgraphs-skinwsi' or dataname == 'subgraphs-onegraphskinwsi':
+        dataset = load_subgraphs_skinwsi_dataset(
+            data_dir, 
+            dataname, 
+            train_prop=train_prop, 
+            valid_prop=valid_prop 
+            )
+
+
     else:
         raise ValueError('Invalid dataname')
     return dataset
@@ -334,6 +343,59 @@ def load_skinwsi_dataset(data_dir,
 
     return graph_list
 
+
+
+
+def load_subgraphs_skinwsi_dataset(data_dir, 
+    dataname, 
+    seed=42, 
+    train_prop=0.5, 
+    valid_prop=0.25
+    ):
+
+    # will be very similar than skinwsi at least in the beginning
+    # could evolve more during dev 
+    subgraph_list = []
+    # for several graphs subgraphs: 
+    if dataname=="subgraphs-skinwsi":
+        data_folder = data_dir + dataname + '/'
+    # could be modified for one graph dataset:
+    elif dataname=="subgraphs-onegraphskinwsi":
+        data_folder = data_dir + 'subgraphs-onegraphskinwsi' + '/r50_4539-14_simplified_3-hops-ngbr/' 
+
+    for file in os.listdir(data_folder):
+        if file.endswith(".pt"):
+
+            graph_dict = torch.load(os.path.join(data_folder, file))
+
+             # Create NCDataset
+            onegraphdataset = NCDataset(dataname)
+            
+            edge_index = graph_dict['edge_index']
+            node_feat = graph_dict['x']
+            label = graph_dict['y']
+            num_nodes = node_feat.shape[0]
+
+            # So far we keep only the all classes mode
+            # not sure a notumor mode make sense wiht these subgraphs 
+            # relabel class from 0 to 5 instead of from 1 to 6 to match with the loss calculation
+            # and to save checkpoint with correct shapes
+            for cellclass in range(1,7):  
+                label[label == cellclass] = cellclass - 1
+           
+
+            onegraphdataset.graph = {
+                'edge_index': edge_index,
+                'node_feat': node_feat,
+                'edge_feat': None,
+                'num_nodes': num_nodes
+            }
+            onegraphdataset.label = label
+
+            subgraph_list.append(onegraphdataset)
+
+
+    return subgraph_list
 
 
 

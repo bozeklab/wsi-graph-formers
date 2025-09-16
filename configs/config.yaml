@@ -9,7 +9,7 @@ previous_steps/all_wsis/"
 json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_1/"
 
 pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-graphs/r50_mortex/"
+graphs/r50_texmorwei/"
 
 conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 pyg_graphs/r50/"
@@ -18,7 +18,7 @@ simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSe
 simplified_pyg_graphs/r50/"
 
 split_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-simplified_pyg_graphs/r50_splitted/"
+simplified_pyg_graphs/r50_splitted100/"
 
 visualization_path: ""
 
@@ -35,13 +35,12 @@ timing: True
 with_texture: True
 typeweight: True 
 
-
 # graph simplification
 max_hops: 3
  
 # graph splitting
 split_from_simplified: True
-nbr_subgraphs: 20 
+nbr_subgraphs: 100 
 
 # graph visualization
 graphtype: dataset  #[dataset, binary, infer]
@@ -52,8 +51,8 @@ figsize: [10, 10]
 # baseline training dataset 
 json_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 previous_steps/hvn_output_fullwsi/"
-output_baselineset: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/version1/"
-tmp_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/version1/tempcache/"
+output_baselineset: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/"
+tmp_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/tempcache/"
 tile_size: 256
 no_bbox: False 
 

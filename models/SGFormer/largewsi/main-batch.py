@@ -38,17 +38,45 @@ from omegaconf import DictConfig, OmegaConf
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))  # print config nicely
 
+    # we don't want to extract the nodestype from the cofig all along but only once as it can
+    # change depending on the dataset choosen for instance
+    nodestype = cfg.nodestype 
 
     ### Load and preprocess data ###
     if cfg.dataset == 'skinwsi':
             graph_list = load_dataset_extra(
                 cfg.data_dir, 
                 cfg.dataset, 
-                cfg.nodestype, 
+                nodestype, 
                 cfg.train_prop, 
                 cfg.valid_prop,
                 cfg.sub_dataset
                 )
+
+    elif cfg.dataset == 'subgraphs-skinwsi':
+            # for subgraphs we only keep one node type 
+            nodestype = "allclasses"
+            graph_list = load_dataset_extra(
+                cfg.data_dir, 
+                cfg.dataset, 
+                nodestype, 
+                cfg.train_prop, 
+                cfg.valid_prop,
+                cfg.sub_dataset
+                )
+
+    elif cfg.dataset == 'subgraphs-onegraphskinwsi':
+            # for subgraphs we only keep one node type 
+            nodestype = "allclasses"
+            graph_list = load_dataset_extra(
+                cfg.data_dir, 
+                cfg.dataset, 
+                nodestype, 
+                cfg.train_prop, 
+                cfg.valid_prop,
+                cfg.sub_dataset
+                )
+
 
     elif cfg.dataset == 'onegraphskinwsi': 
         raise ValueError(
@@ -57,7 +85,7 @@ def main(cfg: DictConfig):
 
     else:
         raise ValueError(
-            "Only skinwsi dataset can be used to run this code")
+            "Only skinwsi dataset and subgraphs skinwsi datasets can be used to run this code")
 
 
 
@@ -109,25 +137,43 @@ def main(cfg: DictConfig):
     ### splitting and batching ###
     n = len(graph_list)
 
-    # Calculate split indices
-    train_end = int(cfg.train_prop * n)
-    val_end = int(cfg.train_prop * n + cfg.valid_prop * n)
+    if cfg.dataset == 'skinwsi':
+        # Calculate split indices
+        train_end = int(cfg.train_prop * n)
+        val_end = int(cfg.train_prop * n + cfg.valid_prop * n)
 
-    train_data = graph_list[:train_end]
-    val_data = graph_list[train_end:val_end]
-    test_data = graph_list[val_end:]
+        train_data = graph_list[:train_end]
+        val_data = graph_list[train_end:val_end]
+        test_data = graph_list[val_end:]
 
-    # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
-    train_loader = DataLoader(train_data, batch_size=1, shuffle=True,  collate_fn=Batch.from_data_list)
-    val_loader = DataLoader(val_data, batch_size=1,  collate_fn=Batch.from_data_list)
-    test_loader = DataLoader(test_data, batch_size=1,  collate_fn=Batch.from_data_list)
+       # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
+        train_loader = DataLoader(train_data, batch_size=1, shuffle=True,  collate_fn=Batch.from_data_list)
+        val_loader = DataLoader(val_data, batch_size=1,  collate_fn=Batch.from_data_list)
+        test_loader = DataLoader(test_data, batch_size=1,  collate_fn=Batch.from_data_list)
 
+    if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
+        # we want the subgraph to be randomly spread in the training set 
+        random.shuffle(graph_list)
+        # the shuffle follow the defined seeds above
+
+        # Calculate split indices
+        train_end = int(cfg.train_prop * n)
+        val_end = int(cfg.train_prop * n + cfg.valid_prop * n)
+
+        train_data = graph_list[:train_end]
+        val_data = graph_list[train_end:val_end]
+        test_data = graph_list[val_end:]
+
+       # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
+        train_loader = DataLoader(train_data, batch_size=cfg.trainsubgraphs_batch_size, shuffle=True,  collate_fn=Batch.from_data_list)
+        val_loader = DataLoader(val_data, batch_size=cfg.trainsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
+        test_loader = DataLoader(test_data, batch_size=cfg.testsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
 
 
     ### Display information of dataset (nbr graphs and so on..) ###
     num_graphs = len(graph_list)
     num_nodes_list = [data.num_nodes for data in graph_list]
-    num_edges_list = [data.num_nodes for data in graph_list]
+    num_edges_list = [len(data.edge_index[0]) for data in graph_list]
 
     # Collect all node labels
     all_labels = []
@@ -148,6 +194,7 @@ def main(cfg: DictConfig):
     # Node feature dimension (assume consistent shape)
     d = graph_list[0].x.shape[1]
 
+    # display information 
     print(f"\ndataset {cfg.dataset} | num graphs: {num_graphs}")
     print(f"avg #nodes/graph: {sum(num_nodes_list)/num_graphs:.2f}, min: {min(num_nodes_list)}, max: {max(num_nodes_list)}")
     print(f"avg #edges/graph: {sum(num_edges_list)/num_graphs:.2f}, min: {min(num_edges_list)}, max: {max(num_edges_list)}")
@@ -242,7 +289,7 @@ def main(cfg: DictConfig):
 
                 if cfg.trainingtask == "binnodeclass_mask":
 
-                    if not cfg.nodestype == 'notumor': 
+                    if not nodestype == 'notumor': 
 
                         # Binary masked loss: supervise only nodes with labels {4,5}
                         logits = out
@@ -277,8 +324,8 @@ def main(cfg: DictConfig):
                     loss = criterion(out, target)
 
 
-            loss.backward()
-            optimizer.step()
+                loss.backward()
+                optimizer.step()
 
 
             # total_loss += loss.item()

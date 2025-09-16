@@ -458,22 +458,8 @@ def stage_b_rasterize_tiles(
 def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
                       tile_size: int, tmp_root: Path, no_bbox: bool) -> bool:
     """
-    Convert a single slide (JSON + WSI) into PanNuke-style tiles.
- 
-    Parameters
-    ----------
-    json_file : pathlib.Path
-        Path to a HoVer-Net WSI JSON file (top-level dict keyed by instance id).
-    wsi_dir : pathlib.Path
-        Directory containing the WSI with the same basename as the JSON.
-    out_root : pathlib.Path
-        Output directory where `.npz` tiles will be written.
-    tile_size : int
-        Size of each square tile in pixels (default PanNuke uses 256).
-    tmp_root : pathlib.Path
-        Scratch directory to hold intermediate shard files per slide.
-    no_bbox : bool
-        If True, ignore any 'bbox' in JSON and always compute from 'contour'.
+    Convert a single slide (JSON + WSI) into PanNuke-style tiles,
+    saving outputs inside a dedicated subfolder out_root/<stem>/.
 
     Returns
     -------
@@ -485,20 +471,25 @@ def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
     if wsi_path is None:
         log.warning(f"[skip] No matching WSI found in '{wsi_dir}' for basename '{stem}'.")
         return False
-    # if wsi_path is None:
-    #     raise FileNotFoundError(f"No WSI found in {wsi_dir} for {stem}.*")
 
-    # Check for existence of the first tile (tile 0,0) to decide skipping
-    sample_tile = out_root / f"{stem}_tile_0_0.npz"
+    # Subfolder for this slide
+    slide_outdir = out_root / stem
+    slide_outdir.mkdir(parents=True, exist_ok=True)
+
+    # Skip if already processed: check for a sentinel tile (0,0)
+    sample_tile = slide_outdir / f"{stem}_tile_0_0.npz"
     if sample_tile.exists():
-        log.info(f"[skip] Output already exists for '{stem}' (found {sample_tile.name}).")
+        log.info(f"[skip] Output already exists for '{stem}' (found {sample_tile.relative_to(out_root)}).")
         return True
 
-
+    # Read WSI size
     W, H = read_wsi_size_with_openslide(wsi_path)  # (W, H)
+
+    # Per-slide shard temp dir
     shards_dir = tmp_root / f"shards_{stem}"
     shards_dir.mkdir(parents=True, exist_ok=True)
 
+    # Stage A: stream + bin to per-tile shards
     stage_a_bin_instances_to_tiles(
         json_path=str(json_file),
         W=W, H=H, tile=tile_size,
@@ -506,20 +497,22 @@ def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
         assume_bbox_in_json=not no_bbox,
     )
 
+    # Stage B: rasterize shards into this slide's output folder
     stage_b_rasterize_tiles(
         shards_dir=shards_dir,
-        out_dir=out_root,
+        out_dir=slide_outdir,   # <<< write inside slide subfolder
         tile=tile_size,
         slide_stem=stem,
     )
 
-    # cleanup (best-effort)
+    # Cleanup (best-effort)
     try:
         shards_dir.rmdir()
     except OSError:
         pass
-    
+
     return True
+
 
 
 

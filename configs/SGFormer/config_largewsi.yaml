@@ -14,8 +14,8 @@ seed: 123
 epochs: 500 
 runs: 1                                # number of distinct runs
 directed: False                        # set to not symmetrize adjacency
-train_prop: 0.5                        # training label proportion
-valid_prop: 0.25                       # validation label proportion 
+train_prop: 0.66                       # training label proportion
+valid_prop: 0.165                      # validation label proportion 
 protocol: semi                         # protocol for cora datasets, semi or supervised 
 rand_split: False                      # use random splits    
 rand_split_class: False                # use random splits with a fixed number of labeled nodes for each class
@@ -88,6 +88,8 @@ fixed_init: True
 
 # training
 trainingtask: nodeclassification       # [nodeclassification, binnodeclass_mask]  (binnodeclass_mask = Binary Node Classification with Known Context Nodes)
+trainsubgraphs_batch_size: 5
+testsubgraphs_batch_size: 5
 
 # dataloading
 nodestype: allclasses                  # [allclasses, notumor], keep or remove classes labels of nodes after loading
