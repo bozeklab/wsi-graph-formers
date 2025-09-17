@@ -361,7 +361,7 @@ def load_subgraphs_skinwsi_dataset(data_dir,
         data_folder = data_dir + dataname + '/'
     # could be modified for one graph dataset:
     elif dataname=="subgraphs-onegraphskinwsi":
-        data_folder = data_dir + 'subgraphs-onegraphskinwsi' + '/r50_4539-14_simplified_3-hops-ngbr/' 
+        data_folder = data_dir + 'subgraphs-onegraphskinwsi' + '/r50_mote_4434-18_simplified_3-hops-ngbr.pt/' 
 
     for file in os.listdir(data_folder):
         if file.endswith(".pt"):

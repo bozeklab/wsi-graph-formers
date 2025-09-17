@@ -116,7 +116,7 @@ def transform_pyg(
     cont_idx,
     cell_type_idx=None,
     num_cell_classes=6,
-    gamma=3.0,
+    gamma=6.0,
     centroid_idx=None,
     normalize_centroid=None
 ):

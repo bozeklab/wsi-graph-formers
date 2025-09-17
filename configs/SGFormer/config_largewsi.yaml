@@ -90,6 +90,8 @@ fixed_init: True
 trainingtask: nodeclassification       # [nodeclassification, binnodeclass_mask]  (binnodeclass_mask = Binary Node Classification with Known Context Nodes)
 trainsubgraphs_batch_size: 5
 testsubgraphs_batch_size: 5
+feature_transform: True                 # normalize with z-scoring the features and add weight for the class feature 
+gamma: 6.0                             # scaling factor applied to the one-hot encoding of cell_type
 
 # dataloading
 nodestype: allclasses                  # [allclasses, notumor], keep or remove classes labels of nodes after loading

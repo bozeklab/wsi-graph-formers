@@ -6,19 +6,19 @@ defaults:
 wsi_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 previous_steps/all_wsis/"
 
-json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_1/"
+json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_3/"
 
 pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-graphs/r50_texmorwei/"
+graphs/r50_mote/"
 
 conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-pyg_graphs/r50/"
+pyg_graphs/r50_mote_sample/"
 
 simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-simplified_pyg_graphs/r50/"
+simplified_pyg_graphs/r50_mote_sample/"
 
 split_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-simplified_pyg_graphs/r50_splitted100/"
+simplified_pyg_graphs/r50_mote_sample_splitted20/"
 
 visualization_path: ""
 
@@ -27,20 +27,19 @@ visualization_path: ""
 ### graphs
 
 # generate graph (pickle format)
-pickle_output_corename: "graph_r50_mortex_"
+pickle_output_corename: "graph_r50_mote_"
 radius: 50
 timing: True 
 
 # generate graph DEV
 with_texture: True
-typeweight: True 
 
 # graph simplification
 max_hops: 3
  
 # graph splitting
 split_from_simplified: True
-nbr_subgraphs: 100 
+nbr_subgraphs: 20 
 
 # graph visualization
 graphtype: dataset  #[dataset, binary, infer]
@@ -55,4 +54,8 @@ output_baselineset: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_
 tmp_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/tempcache/"
 tile_size: 256
 no_bbox: False 
+generate_npz: False 
+generate_png: True
+png_level: 0 
+png_overwrite: False
 

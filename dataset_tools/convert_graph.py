@@ -17,8 +17,69 @@ import os
 from tqdm import tqdm
 import glob
 from torch_geometric.data import Data
+# from torch_sparse import coalesce
 
 from utils.graph_utils import _is_numeric, _flatten
+
+
+
+def _to_tensor(x, dtype=None):
+    if isinstance(x, torch.Tensor):
+        return x.to(dtype=dtype) if dtype is not None else x
+    if isinstance(x, (list, tuple)):
+        return torch.tensor(x, dtype=dtype) if dtype is not None else torch.tensor(x)
+    if isinstance(x, np.ndarray):
+        t = torch.from_numpy(x)
+        return t.to(dtype=dtype) if dtype is not None else t
+    # scalar
+    return torch.tensor(x, dtype=dtype) if dtype is not None else torch.tensor(x)
+
+
+
+def standardize_pyg_dict(d):
+    """
+    Ensure the dict we save has strict torch.Tensor types with correct dtypes/shapes.
+    Required keys: x [N,F] float32, y [N] int64, edge_index [2,E] int64, centroid [N,2] float32.
+    """
+    out = {}
+    # x
+    x = _to_tensor(d.get('x', []), dtype=torch.float32).contiguous()
+    if x.ndim == 1:
+        x = x.unsqueeze(1)
+    out['x'] = x
+
+    # y (labels)
+    y = _to_tensor(d.get('y', []), dtype=torch.long).contiguous()
+    y = y.view(-1)  # [N]
+    out['y'] = y
+
+    # centroid
+    cent = _to_tensor(d.get('centroid', []), dtype=torch.float32).contiguous()
+    if cent.ndim == 1:
+        cent = cent.view(-1, 2)  # try to coerce
+    out['centroid'] = cent
+
+    # edge_index
+    ei = _to_tensor(d.get('edge_index', []), dtype=torch.long).contiguous()
+    if ei.numel() == 0:
+        ei = torch.empty((2, 0), dtype=torch.long)
+    if ei.ndim == 1:
+        # list of pairs -> [E,] -> make [2,E] if length is even
+        assert ei.numel() % 2 == 0, "edge_index length not even"
+        ei = ei.view(2, -1)
+    if ei.shape[0] != 2:
+        ei = ei.t().contiguous()  # allow [E,2] -> [2,E]
+    out['edge_index'] = ei
+
+    # final sanity
+    N = out['x'].size(0)
+    assert out['y'].numel() == N, f"y length {out['y'].numel()} != num_nodes {N}"
+    assert out['centroid'].size(0) == N, f"centroid rows {out['centroid'].size(0)} != num_nodes {N}"
+    if out['edge_index'].numel():
+        mx = int(out['edge_index'].max())
+        assert mx < N, f"edge index {mx} >= num_nodes {N}"
+    return out
+
 
 
 def nx_to_pyg26_data(G: nx.Graph) -> Data:
@@ -102,6 +163,7 @@ def nx_to_pyg_data_manual(G: nx.Graph) -> Data:
     Data
         PyG Data object with x, y, edge_index, and centroid.
     """
+    # v1 kept for now
     # Feature keys (exclude 'cell_type')
     _, first_attr = next(iter(G.nodes(data=True)))
     feature_keys = sorted(
@@ -132,20 +194,20 @@ def nx_to_pyg_data_manual(G: nx.Graph) -> Data:
 
 
 
-
-def save_skinwsi_graph(pyg_graph: Data, output_path: str):
+def save_skinwsi_graph(pyg_graph_or_dict: (dict, Data), output_path: str):
     """
     Simple function to save with torch.save following the arguments of the skinwsi graphs Data
     """
-    torch.save(
-            {
-            'x': pyg_graph.x,
-            'y': pyg_graph.y,
-            'edge_index': pyg_graph.edge_index,
-            'centroid':pyg_graph.centroid,
-            }, 
-            output_path
-    )
+    if isinstance(pyg_graph_or_dict, dict):
+        payload = pyg_graph_or_dict
+    else:
+        payload = {
+            'x': pyg_graph_or_dict.x,
+            'y': pyg_graph_or_dict.y,
+            'edge_index': pyg_graph_or_dict.edge_index,
+            'centroid': pyg_graph_or_dict.centroid,
+        }
+    torch.save(payload, output_path)
 
 
 
@@ -171,8 +233,23 @@ def main(cfg: DictConfig):
                 with open(pickle_path, "rb") as f:
                     G = pickle.load(f)
                 pyg_graph = nx_to_pyg_data_manual(G)
+
+                # Assert node count consistency before saving:
+                N = pyg_graph.x.size(0)
+                assert pyg_graph.y.numel() == N
+                assert pyg_graph.centroid.size(0) == N
+                if pyg_graph.edge_index.numel():
+                    assert int(pyg_graph.edge_index.max()) < N
+
                 # Store attributes as dict to avoid version compatibility issues
-                save_skinwsi_graph(pyg_graph, output_path)
+                raw = {
+                    'x': pyg_graph.x,
+                    'y': pyg_graph.y,
+                    'edge_index': pyg_graph.edge_index,
+                    'centroid': pyg_graph.centroid,
+                }
+                clean = standardize_pyg_dict(raw)
+                save_skinwsi_graph(clean, output_path)
                 print(f"Converted graph saved to: {output_path}")
 
             # we do 2 exceptions: 

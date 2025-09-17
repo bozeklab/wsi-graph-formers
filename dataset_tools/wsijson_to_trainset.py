@@ -455,16 +455,140 @@ def stage_b_rasterize_tiles(
 
 
 
-def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
-                      tile_size: int, tmp_root: Path, no_bbox: bool) -> bool:
+def stage_c_export_png_tiles(
+    wsi_path: Path,
+    tiles_dir: Path,
+    tile: int,
+    slide_stem: str,
+    level: int = 0,
+    overwrite: bool = False,
+):
     """
-    Convert a single slide (JSON + WSI) into PanNuke-style tiles,
+    Export RGB PNG patches from the WSI at the exact (ty, tx) tiles for which
+    corresponding NPZ tiles (<stem>_tile_{ty}_{tx}.npz) already exist.
+
+    This guarantees the PNGs align 1:1 with the PanNuke-style NPZ tiles produced
+    in stage B.
+
+    Parameters
+    ----------
+    wsi_path : pathlib.Path
+        Path to the whole-slide image (WSI).
+    tiles_dir : pathlib.Path
+        Directory containing the NPZ tiles (and where PNGs will be written).
+    tile : int
+        Tile size in pixels (width = height = tile).
+    slide_stem : str
+        Basename used for tile filenames (e.g., 'SlideA').
+    level : int, default 0
+        OpenSlide level to read from (0 = full resolution). Use 0 if NPZs were
+        generated from level-0 coordinates (the usual case).
+    overwrite : bool, default False
+        If False, skip writing PNG if it already exists.
+    """
+    tiles_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find NPZ tiles to mirror as PNGs
+    npz_files = sorted(tiles_dir.glob(f"{slide_stem}_tile_*_*.npz"))
+    if not npz_files:
+        log.warning(f"[{slide_stem}] No NPZ tiles found in {tiles_dir} — nothing to export as PNG.")
+        return
+
+    # Open the slide once
+    slide = openslide.OpenSlide(str(wsi_path))
+    try:
+        # Validate the requested level
+        if level < 0 or level >= slide.level_count:
+            raise ValueError(f"Requested level {level} out of range [0..{slide.level_count-1}]")
+
+        # Determine downsample for the chosen level to compute correct read sizes
+        # (For level=0 this will be 1.0)
+        downsample = float(slide.level_downsamples[level])
+
+        for npz_path in tqdm(npz_files, desc=f"[{slide_stem}] exporting PNG tiles"):
+            # Parse ty, tx from "<stem>_tile_{ty}_{tx}.npz"
+            name = npz_path.stem  # "<stem>_tile_{ty}_{tx}"
+            try:
+                _, _, ty_str, tx_str = name.split('_')  # ["<stem>", "tile", "{ty}", "{tx}"]
+            except ValueError:
+                # Fallback robust parse
+                parts = name.split('_')
+                if len(parts) < 4 or parts[-3] != "tile":
+                    log.warning(f"[{slide_stem}] Unexpected tile filename format: {name}")
+                    continue
+                ty_str, tx_str = parts[-2], parts[-1]
+
+            ty, tx = int(ty_str), int(tx_str)
+            x0, y0 = tx * tile, ty * tile
+
+            png_path = tiles_dir / f"{slide_stem}_tile_{ty}_{tx}.png"
+            if (not overwrite) and png_path.exists():
+                continue
+
+            # read_region expects level-0 coordinates; size is in pixels at the requested level.
+            # When reading at 'level', the returned image size is exactly (tile, tile) if we pass
+            # size=(tile, tile) and the lib will internally scale based on 'level'.
+            #
+            # However, NPZ tiles were created from level-0 coordinates with size 'tile'.
+            # To ensure perfect alignment, we read at level=0 with size=(tile, tile) by default.
+            # If a non-zero 'level' is explicitly requested, we still pass (tile, tile) so that
+            # the patch corresponds to the same field of view but sampled at that pyramid level.
+            try:
+                region = slide.read_region((x0, y0), level, (tile, tile))  # PIL RGBA
+            except Exception as e:
+                log.error(f"[{slide_stem}] read_region failed for (tx={tx}, ty={ty}) at level {level}: {e}")
+                continue
+
+            # Convert RGBA -> BGR for OpenCV, drop alpha
+            rgba = np.asarray(region)  # H x W x 4
+            if rgba.ndim != 3 or rgba.shape[2] != 4:
+                log.error(f"[{slide_stem}] Unexpected region shape at (tx={tx}, ty={ty}): {rgba.shape}")
+                continue
+
+            bgr = cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGR)
+
+            # Write PNG
+            ok = cv2.imwrite(str(png_path), bgr)
+            if not ok:
+                log.error(f"[{slide_stem}] Failed to write {png_path}")
+
+    finally:
+        slide.close()
+
+
+
+def process_one_slide(
+    json_file: Path,
+    wsi_dir: Path,
+    out_root: Path,
+    tile_size: int,
+    tmp_root: Path,
+    no_bbox: bool,
+    generate_npz: bool = True,
+    generate_png: bool = False,
+    png_level: int = 0,
+    png_overwrite: bool = False,
+) -> bool:
+    """
+    Convert a single slide (JSON + WSI) into PanNuke-style tiles and/or PNG patches,
     saving outputs inside a dedicated subfolder out_root/<stem>/.
+
+    Parameters
+    ----------
+    generate_npz : bool, default True
+        If True, run Stage A+B to produce NPZ tiles.
+    generate_png : bool, default False
+        If True, export PNG tiles (Stage C) for every NPZ tile present
+        in the slide's output folder.
+    png_level : int, default 0
+        OpenSlide level for PNG export (Stage C).
+    png_overwrite : bool, default False
+        If False, existing PNGs will be skipped.
 
     Returns
     -------
     bool
-        True if tile(s) were processed or already existed; False if WSI is missing.
+        True if work was done or outputs already existed; False if WSI is missing.
     """
     stem = json_file.stem
     wsi_path = find_matching_wsi(stem, wsi_dir)
@@ -472,46 +596,70 @@ def process_one_slide(json_file: Path, wsi_dir: Path, out_root: Path,
         log.warning(f"[skip] No matching WSI found in '{wsi_dir}' for basename '{stem}'.")
         return False
 
-    # Subfolder for this slide
     slide_outdir = out_root / stem
     slide_outdir.mkdir(parents=True, exist_ok=True)
 
-    # Skip if already processed: check for a sentinel tile (0,0)
-    sample_tile = slide_outdir / f"{stem}_tile_0_0.npz"
-    if sample_tile.exists():
-        log.info(f"[skip] Output already exists for '{stem}' (found {sample_tile.relative_to(out_root)}).")
-        return True
+    # Sentinel files to detect existing work
+    sample_npz = slide_outdir / f"{stem}_tile_0_0.npz"
+    sample_png = slide_outdir / f"{stem}_tile_0_0.png"
 
-    # Read WSI size
-    W, H = read_wsi_size_with_openslide(wsi_path)  # (W, H)
+    did_anything = False
 
-    # Per-slide shard temp dir
-    shards_dir = tmp_root / f"shards_{stem}"
-    shards_dir.mkdir(parents=True, exist_ok=True)
+    # === Stage A+B: NPZ generation ===
+    if generate_npz:
+        if sample_npz.exists():
+            log.info(f"[skip] NPZ already exists for '{stem}' (found {sample_npz.relative_to(out_root)}).")
+        else:
+            # Read WSI (W, H) and run staging
+            W, H = read_wsi_size_with_openslide(wsi_path)
+            shards_dir = tmp_root / f"shards_{stem}"
+            shards_dir.mkdir(parents=True, exist_ok=True)
 
-    # Stage A: stream + bin to per-tile shards
-    stage_a_bin_instances_to_tiles(
-        json_path=str(json_file),
-        W=W, H=H, tile=tile_size,
-        tmp_dir=shards_dir,
-        assume_bbox_in_json=not no_bbox,
-    )
+            stage_a_bin_instances_to_tiles(
+                json_path=str(json_file),
+                W=W, H=H, tile=tile_size,
+                tmp_dir=shards_dir,
+                assume_bbox_in_json=not no_bbox,
+            )
 
-    # Stage B: rasterize shards into this slide's output folder
-    stage_b_rasterize_tiles(
-        shards_dir=shards_dir,
-        out_dir=slide_outdir,   # <<< write inside slide subfolder
-        tile=tile_size,
-        slide_stem=stem,
-    )
+            stage_b_rasterize_tiles(
+                shards_dir=shards_dir,
+                out_dir=slide_outdir,
+                tile=tile_size,
+                slide_stem=stem,
+            )
 
-    # Cleanup (best-effort)
-    try:
-        shards_dir.rmdir()
-    except OSError:
-        pass
+            # Cleanup shards (best-effort)
+            try:
+                shards_dir.rmdir()
+            except OSError:
+                pass
 
-    return True
+            did_anything = True
+
+    # === Stage C: PNG export ===
+    if generate_png:
+        # Export PNGs for every NPZ tile present in slide_outdir
+        # (works whether NPZs were just created above or already existed)
+        npz_tiles = list(slide_outdir.glob(f"{stem}_tile_*_*.npz"))
+        if not npz_tiles:
+            log.warning(f"[{stem}] No NPZ tiles found to mirror as PNGs in {slide_outdir}. Skipping PNG export.")
+        else:
+            stage_c_export_png_tiles(
+                wsi_path=wsi_path,
+                tiles_dir=slide_outdir,
+                tile=tile_size,
+                slide_stem=stem,
+                level=png_level,
+                overwrite=png_overwrite,
+            )
+            did_anything = True
+
+    return True if (did_anything or sample_npz.exists() or sample_png.exists()) else False
+
+
+
+
 
 
 
@@ -529,11 +677,16 @@ def main(cfg: DictConfig):
     tile_size = int(cfg.tile_size)
     no_bbox   = bool(cfg.no_bbox)
 
+    generate_npz = bool(cfg.generate_npz)
+    generate_png = bool(cfg.generate_png)
+    png_level  = int(cfg.png_level)
+    png_overwrite = bool(cfg.png_overwrite) 
+
     # Ensure dirs exist
     out_dir.mkdir(parents=True, exist_ok=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    # Now Path.glob() works
+    # Discover JSON files
     json_files = sorted(json_dir.glob("*.json"))
     if not json_files:
         log.error(f"No JSON files found in {json_dir}")
@@ -552,6 +705,10 @@ def main(cfg: DictConfig):
             tile_size=tile_size,
             tmp_root=tmp_dir,
             no_bbox=no_bbox,
+            generate_npz=generate_npz,
+            generate_png=generate_png,
+            png_level=png_level,
+            png_overwrite=png_overwrite,
         )
         if ok:
             processed += 1
@@ -564,11 +721,16 @@ def main(cfg: DictConfig):
     except OSError:
         pass
 
-    log.info(f"Done. Processed: {processed} | Skipped (missing WSI): {skipped}")
+    log.info(
+        f"Done. Processed: {processed} | Skipped (missing WSI): {skipped} | "
+        f"NPZ: {'on' if generate_npz else 'off'} | PNG: {'on' if generate_png else 'off'} "
+        f"(level={png_level}, overwrite={png_overwrite})"
+    )
 
 """
 Stream a full-WSI HoVer-Net JSON (stdlib json only) and emit PanNuke-style tiles (.npz),
-auto-reading WSI width/height from a slide in another folder via OpenSlide.
+auto-reading WSI width/height from a slide in another folder via OpenSlide. Also can generate 
+image files as pngs corresponding to the npz file generated. 
 
 Requirements:
 pip install numpy opencv-python tqdm openslide-python openslide-bin

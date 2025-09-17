@@ -315,34 +315,40 @@ def build_graph_from_json(json_path,
     tree = cKDTree(centroids)
     pairs = tree.query_pairs(r=radius)
 
-    # graph
+
+    N = ids.shape[0]
+
+    # Build graph with consecutive labels 0..N-1, but keep original cell id
     G = nx.Graph()
-    for i, node_id in enumerate(ids):
+    for i in range(N):
         attrs = dict(
+            orig_id=int(ids[i]),                      # keep original label for traceability
             cell_type=int(cell_types[i]),
             centroid=tuple(centroids[i]),
-            area=morph_arr[i, 0],
-            perimeter=morph_arr[i, 1],
-            eccentricity=morph_arr[i, 2],
-            solidity=morph_arr[i, 3],
-            major_axis_length=morph_arr[i, 4],
-            minor_axis_length=morph_arr[i, 5],
-            extent=morph_arr[i, 6],
+            area=float(morph_arr[i, 0]),
+            perimeter=float(morph_arr[i, 1]),
+            eccentricity=float(morph_arr[i, 2]),
+            solidity=float(morph_arr[i, 3]),
+            major_axis_length=float(morph_arr[i, 4]),
+            minor_axis_length=float(morph_arr[i, 5]),
+            extent=float(morph_arr[i, 6]),
         )
         if with_texture:
             attrs.update(
-                tex_roughness=texture_arr[i, 0],
-                tex_contrast=texture_arr[i, 1],
-                tex_dissimilarity=texture_arr[i, 2],
-                tex_homogeneity=texture_arr[i, 3],
-                tex_entropy=texture_arr[i, 4],
-                tex_angular_second_moment=texture_arr[i, 5],
-                tex_dispersion=texture_arr[i, 6],
+                tex_roughness=float(texture_arr[i, 0]),
+                tex_contrast=float(texture_arr[i, 1]),
+                tex_dissimilarity=float(texture_arr[i, 2]),
+                tex_homogeneity=float(texture_arr[i, 3]),
+                tex_entropy=float(texture_arr[i, 4]),
+                tex_angular_second_moment=float(texture_arr[i, 5]),
+                tex_dispersion=float(texture_arr[i, 6]),
             )
-        G.add_node(int(node_id), **attrs)
+        G.add_node(i, **attrs)  # <- consecutive node ids
 
+    # KDTree pairs were computed on the sorted arrays, so (i, j) are 0..N-1 already
     for i, j in tqdm(pairs, desc="Adding edges"):
-        G.add_edge(int(ids[i]), int(ids[j]))
+        if i != j:
+            G.add_edge(int(i), int(j))
 
     return G
 

@@ -31,6 +31,8 @@ warnings.filterwarnings('ignore')
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
+from utils.graph_utils import fit_stats_pyg, transform_pyg 
+
 
 
 
@@ -146,10 +148,40 @@ def main(cfg: DictConfig):
         val_data = graph_list[train_end:val_end]
         test_data = graph_list[val_end:]
 
+        ### Normalization of features ###
+        if cfg.feature_transform:
+            cell_type_idx = 0
+            centroid_idx = 1  
+            cont_idx = list(range(12, data.x.size(1)))  # all but cell_type and centroid
+
+            # Fit on TRAIN graphs only
+            stats = fit_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
+
+            # Apply the *same* stats to every split
+            train_data = [transform_pyg(g, stats, cont_idx=cont_idx,
+                                          cell_type_idx=cell_type_idx,
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None) for g in train_data]
+
+            val_data   = [transform_pyg(g, stats, cont_idx=cont_idx,
+                                          cell_type_idx=cell_type_idx,
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None) for g in val_data]
+
+            test_data  = [transform_pyg(g, stats, cont_idx=cont_idx,
+                                          cell_type_idx=cell_type_idx,
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None) for g in test_data]
+
        # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
         train_loader = DataLoader(train_data, batch_size=1, shuffle=True,  collate_fn=Batch.from_data_list)
         val_loader = DataLoader(val_data, batch_size=1,  collate_fn=Batch.from_data_list)
         test_loader = DataLoader(test_data, batch_size=1,  collate_fn=Batch.from_data_list)
+
+
 
     if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
         # we want the subgraph to be randomly spread in the training set 
@@ -164,10 +196,39 @@ def main(cfg: DictConfig):
         val_data = graph_list[train_end:val_end]
         test_data = graph_list[val_end:]
 
+        ### Normalization of features ###
+        if cfg.feature_transform:
+            cell_type_idx = 0
+            centroid_idx = 1  
+            cont_idx = list(range(12, data.x.size(1)))  # all but cell_type and centroid
+
+            # Fit on TRAIN graphs only
+            stats = fit_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
+
+            # Apply the *same* stats to every split
+            train_data = [transform_pyg(g, stats, cont_idx=cont_idx,
+                                          cell_type_idx=cell_type_idx,
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None) for g in train_data]
+
+            val_data   = [transform_pyg(g, stats, cont_idx=cont_idx,
+                                          cell_type_idx=cell_type_idx, 
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None) for g in val_data]
+
+            test_data  = [transform_pyg(g, stats, cont_idx=cont_idx,
+                                          cell_type_idx=cell_type_idx,
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None) for g in test_data]
+
        # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
         train_loader = DataLoader(train_data, batch_size=cfg.trainsubgraphs_batch_size, shuffle=True,  collate_fn=Batch.from_data_list)
         val_loader = DataLoader(val_data, batch_size=cfg.trainsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
         test_loader = DataLoader(test_data, batch_size=cfg.testsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
+
 
 
     ### Display information of dataset (nbr graphs and so on..) ###
