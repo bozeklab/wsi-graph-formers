@@ -31,7 +31,8 @@ warnings.filterwarnings('ignore')
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from utils.graph_utils import fit_stats_pyg, transform_pyg 
+from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
+    append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_celltype_onehot_cols
 
 
 
@@ -136,7 +137,7 @@ def main(cfg: DictConfig):
 
 
 
-    ### splitting and batching ###
+    ### create folds ###
     n = len(graph_list)
 
     if cfg.dataset == 'skinwsi':
@@ -147,41 +148,6 @@ def main(cfg: DictConfig):
         train_data = graph_list[:train_end]
         val_data = graph_list[train_end:val_end]
         test_data = graph_list[val_end:]
-
-        ### Normalization of features ###
-        if cfg.feature_transform:
-            cell_type_idx = 0
-            centroid_idx = 1  
-            cont_idx = list(range(12, data.x.size(1)))  # all but cell_type and centroid
-
-            # Fit on TRAIN graphs only
-            stats = fit_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
-
-            # Apply the *same* stats to every split
-            train_data = [transform_pyg(g, stats, cont_idx=cont_idx,
-                                          cell_type_idx=cell_type_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None) for g in train_data]
-
-            val_data   = [transform_pyg(g, stats, cont_idx=cont_idx,
-                                          cell_type_idx=cell_type_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None) for g in val_data]
-
-            test_data  = [transform_pyg(g, stats, cont_idx=cont_idx,
-                                          cell_type_idx=cell_type_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None) for g in test_data]
-
-       # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
-        train_loader = DataLoader(train_data, batch_size=1, shuffle=True,  collate_fn=Batch.from_data_list)
-        val_loader = DataLoader(val_data, batch_size=1,  collate_fn=Batch.from_data_list)
-        test_loader = DataLoader(test_data, batch_size=1,  collate_fn=Batch.from_data_list)
-
-
 
     if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
         # we want the subgraph to be randomly spread in the training set 
@@ -196,39 +162,106 @@ def main(cfg: DictConfig):
         val_data = graph_list[train_end:val_end]
         test_data = graph_list[val_end:]
 
-        ### Normalization of features ###
-        if cfg.feature_transform:
-            cell_type_idx = 0
-            centroid_idx = 1  
-            cont_idx = list(range(12, data.x.size(1)))  # all but cell_type and centroid
 
-            # Fit on TRAIN graphs only
-            stats = fit_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
+    ### Normalization of features ###
+    if cfg.zscore_normalization:
+        centroid_idx = [1,2]
+        cont_idx = [0]
+        cont_idx = cont_idx + list(range(3, data.x.size(1)))  # all but centroid
+
+        # Fit on TRAIN graphs only
+        stats = fit_zscore_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
+
+        if cfg.celltype_asfeature:
+
+            ## Add cell type as a feature after normalization###
 
             # Apply the *same* stats to every split
-            train_data = [transform_pyg(g, stats, cont_idx=cont_idx,
-                                          cell_type_idx=cell_type_idx,
+            train_data = [normalize_encode_celltype_pyg(
+                                          g, 
+                                          stats, 
+                                          cont_idx=cont_idx,
                                           gamma=cfg.gamma,
                                           centroid_idx=centroid_idx,
-                                          normalize_centroid=None) for g in train_data]
-
-            val_data   = [transform_pyg(g, stats, cont_idx=cont_idx,
-                                          cell_type_idx=cell_type_idx, 
+                                          normalize_centroid=None
+                                          ) for g in train_data]
+            val_data = [normalize_encode_celltype_pyg(
+                                          g, 
+                                          stats, 
+                                          cont_idx=cont_idx,
                                           gamma=cfg.gamma,
                                           centroid_idx=centroid_idx,
-                                          normalize_centroid=None) for g in val_data]
-
-            test_data  = [transform_pyg(g, stats, cont_idx=cont_idx,
-                                          cell_type_idx=cell_type_idx,
+                                          normalize_centroid=None
+                                          ) for g in val_data]
+            test_data = [normalize_encode_celltype_pyg(
+                                          g, 
+                                          stats, 
+                                          cont_idx=cont_idx,
                                           gamma=cfg.gamma,
                                           centroid_idx=centroid_idx,
-                                          normalize_centroid=None) for g in test_data]
+                                          normalize_centroid=None
+                                          ) for g in test_data]
+        else: 
+            # Apply the *same* stats to every split
+            train_data = [normalize_zscore_pyg(
+                                        g, 
+                                        stats, 
+                                        cont_idx=cont_idx,
+                                        centroid_idx=centroid_idx,
+                                        normalize_centroid=None
+                                        ) for g in train_data]
+            val_data   = [normalize_zscore_pyg(
+                                        g, 
+                                        stats, 
+                                        cont_idx=cont_idx,
+                                        centroid_idx=centroid_idx,
+                                        normalize_centroid=None
+                                        ) for g in val_data]
+            test_data  = [normalize_zscore_pyg(
+                                        g, 
+                                        stats, 
+                                        cont_idx=cont_idx,
+                                        centroid_idx=centroid_idx,
+                                        normalize_centroid=None
+                                        ) for g in test_data]
 
+
+    ## Add cell type as a feature and skip normalization###
+    # gamma is useful only if there is a z-scoring normalization so put to 1 here 
+    if not cfg.zscore_normalization and cfg.celltype_asfeature:
+        train_data = [append_celltype_onehot_pyg(g,gamma=1) for g in train_data]
+        val_data = [append_celltype_onehot_pyg(g,gamma=1) for g in val_data]
+        test_data = [append_celltype_onehot_pyg(g,gamma=1) for g in test_data]
+
+
+
+    ### Mask the hot-encoded cell type feature if needed ###
+    # do it for supervised classes to avoid data leakage
+
+    # if cfg.celltype_asfeature:
+    #     # install_mask_celltype_onehot(
+    #     #     targets=[train_loader, val_loader, test_loader],
+    #     #     classes_to_mask=(4, 5),
+    #     #     label_base=0
+    #     # )
+    #     mask_on_graph_list(train_data, [4, 5], label_base=0, verbose=True)
+    #     mask_on_graph_list(val_data,   [4, 5], label_base=0, verbose=True)
+    #     mask_on_graph_list(test_data,  [4, 5], label_base=0, verbose=True)
+
+
+
+    ### dataloader and batching ###
+    if cfg.dataset == 'skinwsi':
+       # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
+        train_loader = DataLoader(train_data, batch_size=1, shuffle=True,  collate_fn=Batch.from_data_list)
+        val_loader = DataLoader(val_data, batch_size=1,  collate_fn=Batch.from_data_list)
+        test_loader = DataLoader(test_data, batch_size=1,  collate_fn=Batch.from_data_list)
+
+    if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
        # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
         train_loader = DataLoader(train_data, batch_size=cfg.trainsubgraphs_batch_size, shuffle=True,  collate_fn=Batch.from_data_list)
         val_loader = DataLoader(val_data, batch_size=cfg.trainsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
         test_loader = DataLoader(test_data, batch_size=cfg.testsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
-
 
 
     ### Display information of dataset (nbr graphs and so on..) ###
@@ -313,12 +346,6 @@ def main(cfg: DictConfig):
 
 
 
-    ### We can test until this point
-    anchor = True
-    #true_label = dataset.label
-
-
-
     ### Training loop ###
     for run in range(cfg.runs):
 
@@ -344,7 +371,12 @@ def main(cfg: DictConfig):
             for data in train_loader:           # each `data` is one graph
 
                 data = data.to(device)          # moves x, edge_index, y, etc.
-                optimizer.zero_grad()
+                optimizer.zero_grad()      
+
+
+                if cfg.celltype_asfeature:
+                    mask_celltype_onehot_cols(data, classes=[4, 5], label_base=0)
+
 
                 out = model(data.x, data.edge_index)
 
@@ -397,16 +429,62 @@ def main(cfg: DictConfig):
             if epoch % cfg.eval_step == 0:
 
                 if cfg.trainingtask == "binnodeclass_mask":
-                    train_metric, train_loss = evaluate_binmasked_wloader(model, train_loader, eval_func, criterion, cfg, device)
-                    val_metric,   val_loss   = evaluate_binmasked_wloader(model, val_loader,   eval_func, criterion, cfg, device)
-                    test_metric,  _          = evaluate_binmasked_wloader(model, test_loader,  eval_func, criterion, cfg, device)
-                    
-
+                    train_metric, train_loss = evaluate_binmasked_wloader(
+                        model, 
+                        train_loader, 
+                        eval_func, 
+                        criterion, 
+                        cfg, 
+                        device, 
+                        celltype_asfeature=cfg.celltype_asfeature
+                    )
+                    val_metric,   val_loss   = evaluate_binmasked_wloader(
+                        model, 
+                        val_loader, 
+                        eval_func, 
+                        criterion, 
+                        cfg, 
+                        device, 
+                        celltype_asfeature=cfg.celltype_asfeature
+                    )
+                    test_metric,  _          = evaluate_binmasked_wloader(
+                        model, 
+                        test_loader, 
+                        eval_func, 
+                        criterion, 
+                        cfg, 
+                        device, 
+                        celltype_asfeature=cfg.celltype_asfeature
+                    )
                 else:
-                    train_metric, train_loss = evaluate_wloader(model, train_loader, eval_func, criterion, cfg, device)
-                    val_metric,   val_loss   = evaluate_wloader(model, val_loader,   eval_func, criterion, cfg, device)
-                    test_metric,  _          = evaluate_wloader(model, test_loader,  eval_func, criterion, cfg, device)
-
+                    train_metric, train_loss = evaluate_wloader(
+                        model, 
+                        train_loader, 
+                        eval_func, 
+                        criterion, 
+                        cfg, 
+                        device, 
+                        celltype_asfeature=cfg.celltype_asfeature
+                    )
+                    val_metric,   val_loss   = evaluate_wloader(
+                        model, 
+                        val_loader, 
+                        eval_func, 
+                        criterion, 
+                        cfg, 
+                        device, 
+                        celltype_asfeature=cfg.celltype_asfeature
+                    )
+                    test_metric,  _          = evaluate_wloader(
+                        model, 
+                        test_loader, 
+                        eval_func, 
+                        criterion, 
+                        cfg, 
+                        device, 
+                        celltype_asfeature=cfg.celltype_asfeature
+                    )
+                    
                 logger.add_result(run, [train_metric, val_metric, test_metric, val_loss])
 
                 if epoch % cfg.display_step == 0:

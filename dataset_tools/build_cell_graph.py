@@ -322,7 +322,7 @@ def build_graph_from_json(json_path,
     G = nx.Graph()
     for i in range(N):
         attrs = dict(
-            orig_id=int(ids[i]),                      # keep original label for traceability
+            # orig_id=int(ids[i]),                      # keep original label for traceability
             cell_type=int(cell_types[i]),
             centroid=tuple(centroids[i]),
             area=float(morph_arr[i, 0]),

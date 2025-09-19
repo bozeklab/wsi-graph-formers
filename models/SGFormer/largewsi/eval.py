@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 from torch_geometric.utils import subgraph
-
+from utils.graph_utils import mask_celltype_onehot_cols
 
 
 
@@ -55,7 +55,13 @@ def evaluate(model, dataset, split_idx, eval_func, criterion, cfg, result=None):
 
 
 @torch.no_grad()
-def evaluate_wloader(model, loader, eval_func, criterion, cfg, device):
+def evaluate_wloader(model, 
+                     loader, 
+                     eval_func, 
+                     criterion, 
+                     cfg, 
+                     device,
+                     celltype_asfeature: bool = False):
     """
     Evaluate a node‑classification model on a PyG DataLoader of graphs.
     Returns:
@@ -71,6 +77,10 @@ def evaluate_wloader(model, loader, eval_func, criterion, cfg, device):
     for batch in loader:
 
         batch = batch.to(device)
+
+        if cfg.celltype_asfeature:
+            mask_celltype_onehot_cols(batch, classes=[4, 5], label_base=0)
+
         out = model(batch.x, batch.edge_index)
 
         out = F.log_softmax(out, dim=1)
@@ -148,7 +158,14 @@ def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg,
 
 
 @torch.no_grad()
-def evaluate_binmasked_wloader(model, loader, eval_func, criterion, cfg, device, threshold_logit: float = 0.0):
+def evaluate_binmasked_wloader(model, 
+                               loader, 
+                               eval_func, 
+                               criterion, 
+                               cfg, 
+                               device, 
+                               threshold_logit: float = 0.0, 
+                               celltype_asfeature: bool = False):
     """
     Binary masked evaluation on a PyG DataLoader:
       - Uses only nodes with labels in {4,5}
@@ -166,6 +183,10 @@ def evaluate_binmasked_wloader(model, loader, eval_func, criterion, cfg, device,
 
     for batch in loader:
         batch = batch.to(device)
+
+        if cfg.celltype_asfeature:
+            mask_celltype_onehot_cols(batch, classes=[4, 5], label_base=0)
+        
         logits = model(batch.x, batch.edge_index)
 
         # ensure shape [N]

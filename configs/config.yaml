@@ -6,7 +6,7 @@ defaults:
 wsi_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 previous_steps/all_wsis/"
 
-json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_3/"
+json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_1/"
 
 pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 graphs/r50_mote/"
@@ -18,7 +18,7 @@ simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSe
 simplified_pyg_graphs/r50_mote_sample/"
 
 split_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-simplified_pyg_graphs/r50_mote_sample_splitted20/"
+simplified_pyg_graphs/r50_mote_sample_splitted100/"
 
 visualization_path: ""
 
@@ -29,9 +29,7 @@ visualization_path: ""
 # generate graph (pickle format)
 pickle_output_corename: "graph_r50_mote_"
 radius: 50
-timing: True 
-
-# generate graph DEV
+timing: True
 with_texture: True
 
 # graph simplification
@@ -39,7 +37,7 @@ max_hops: 3
  
 # graph splitting
 split_from_simplified: True
-nbr_subgraphs: 20 
+nbr_subgraphs: 100 
 
 # graph visualization
 graphtype: dataset  #[dataset, binary, infer]
