@@ -78,8 +78,8 @@ def evaluate_wloader(model,
 
         batch = batch.to(device)
 
-        if cfg.celltype_asfeature:
-            mask_celltype_onehot_cols(batch, classes=[4, 5], label_base=0)
+        # if cfg.celltype_asfeature:
+        #     mask_celltype_onehot_cols(batch, classes=[4, 5], label_base=0)
 
         out = model(batch.x, batch.edge_index)
 
@@ -184,8 +184,8 @@ def evaluate_binmasked_wloader(model,
     for batch in loader:
         batch = batch.to(device)
 
-        if cfg.celltype_asfeature:
-            mask_celltype_onehot_cols(batch, classes=[4, 5], label_base=0)
+        # if cfg.celltype_asfeature:
+        #     mask_celltype_onehot_cols(batch, classes=[4, 5], label_base=0)
         
         logits = model(batch.x, batch.edge_index)
 

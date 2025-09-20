@@ -18,7 +18,7 @@ simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSe
 simplified_pyg_graphs/r50_mote_sample/"
 
 split_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-simplified_pyg_graphs/r50_mote_sample_splitted100/"
+pyg_graphs/r50_mote_sample_splitted100/"
 
 visualization_path: ""
 
@@ -36,7 +36,7 @@ with_texture: True
 max_hops: 3
  
 # graph splitting
-split_from_simplified: True
+split_from_simplified: False 
 nbr_subgraphs: 100 
 
 # graph visualization

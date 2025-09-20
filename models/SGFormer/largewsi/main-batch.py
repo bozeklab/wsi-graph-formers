@@ -32,7 +32,8 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
-    append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_celltype_onehot_cols
+    append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_on_graph_list, \
+    sanity_check_graph_list 
 
 
 
@@ -127,6 +128,7 @@ def main(cfg: DictConfig):
                 label= g.label
             )
         converted.append(data)
+
 
     # replacement 
     graph_list = converted
@@ -234,20 +236,20 @@ def main(cfg: DictConfig):
         test_data = [append_celltype_onehot_pyg(g,gamma=1) for g in test_data]
 
 
-
     ### Mask the hot-encoded cell type feature if needed ###
     # do it for supervised classes to avoid data leakage
+    if cfg.celltype_asfeature:
+        mask_on_graph_list(train_data, classes=[4, 5], label_base=0)
+        mask_on_graph_list(val_data, classes=[4, 5], label_base=0)
+        mask_on_graph_list(test_data, classes=[4, 5], label_base=0)
 
-    # if cfg.celltype_asfeature:
-    #     # install_mask_celltype_onehot(
-    #     #     targets=[train_loader, val_loader, test_loader],
-    #     #     classes_to_mask=(4, 5),
-    #     #     label_base=0
-    #     # )
-    #     mask_on_graph_list(train_data, [4, 5], label_base=0, verbose=True)
-    #     mask_on_graph_list(val_data,   [4, 5], label_base=0, verbose=True)
-    #     mask_on_graph_list(test_data,  [4, 5], label_base=0, verbose=True)
-
+        # Sanity check 
+        print("Sanity check on train split masking... ")
+        sanity_check_graph_list(train_data, (4,5), label_base=0)
+        print("Sanity check on val split masking... ")
+        sanity_check_graph_list(val_data,   (4,5), label_base=0)
+        print("Sanity check on test split masking... ")
+        sanity_check_graph_list(test_data,  (4,5), label_base=0)
 
 
     ### dataloader and batching ###
@@ -371,12 +373,7 @@ def main(cfg: DictConfig):
             for data in train_loader:           # each `data` is one graph
 
                 data = data.to(device)          # moves x, edge_index, y, etc.
-                optimizer.zero_grad()      
-
-
-                if cfg.celltype_asfeature:
-                    mask_celltype_onehot_cols(data, classes=[4, 5], label_base=0)
-
+                optimizer.zero_grad()     
 
                 out = model(data.x, data.edge_index)
 

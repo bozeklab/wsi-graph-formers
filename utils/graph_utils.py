@@ -9,6 +9,7 @@ import torch
 from torch import Tensor
 import torch.nn.functional as F
 from torch.utils.data import Subset
+from torch_geometric.data import Data
 
 
 def _is_numeric(value: Any) -> bool:  # noqa: D401  – keep the underscores
@@ -229,7 +230,7 @@ def append_celltype_onehot_pyg(
     attach : bool, optional
         If True, modifies the graph in-place:
           - Preserves old features in `data.x_raw` (if not already set).
-          - Replaces `data.x` with [existing features || γ·onehot(label)].
+          - Replaces `data` with [existing features || γ·onehot(label)].
           - Updates `data.feature_names`, `data.gamma_cell_type`,
             and `data.transform_version`.
         If False, only returns the concatenated tensor. Default is True.
@@ -337,7 +338,7 @@ def append_celltype_onehot_pyg(
         data.transform_version = "append_label_onehot_v2"
         data.unknown_label_value = int(unknown_label)
         data.label_base = int(label_base)
-        return data.x
+        return data
 
     return new_x
 
@@ -521,10 +522,33 @@ def normalize_encode_celltype_pyg(
 
 
 
+
 def mask_celltype_onehot_cols(data, classes, *, label_base=0):
     """
-    In-place: set the one-hot columns for given classes to 0 in data.x.
-    Requires data.feature_names from append_celltype_onehot_pyg. No-op if absent.
+    In-place: zero the one-hot columns for the given `classes` in `data.x`.
+
+    This ONLY touches the cell-type one-hot block that was appended by
+    `append_celltype_onehot_pyg` (identified via `data.feature_names`).
+    If `feature_names` is missing or the requested columns are not found,
+    the function is a no-op.
+
+    Parameters
+    ----------
+    data : torch_geometric.data.Data
+        Graph with `x` and `feature_names` produced by your pipeline.
+    classes : Iterable[int]
+        Class IDs whose one-hot columns should be set to 0.
+        The IDs must match the naming used in `feature_names`, i.e.,
+        "cell_{id}" (consistent with `label_base` used at encoding time).
+    label_base : int, optional
+        Included for API symmetry; the current implementation looks up
+        columns by name ("cell_{id}") and does not branch on this value.
+        Default is 0.
+
+    Returns
+    -------
+    None
+        Operates in-place on `data.x`.
     """
     fn = getattr(data, "feature_names", None)
     if fn is None:
@@ -534,129 +558,111 @@ def mask_celltype_onehot_cols(data, classes, *, label_base=0):
     cols = [c for c in cols if c is not None]
     if not cols:
         return
-    data.x[:, cols] = 0.0
+    data.x[:, cols] = 0.0  # in-place
 
 
 
-# def mask_celltype_onehot(target, classes_to_mask=(4, 5), *, label_base=0):
-#     """
-#     In-place: zero the cell-type one-hot columns for the given classes
-#     across all graphs in `target`.
 
-#     Parameters
-#     ----------
-#     target : Data | list[Data] | Dataset | Subset | DataLoader | list of these
-#         Object(s) containing PyG Data graphs.
-#     classes_to_mask : tuple[int], optional
-#         Class IDs whose one-hot columns should be zeroed. Use the same ID
-#         convention as `label_base`. Default: (4, 5).
-#     label_base : int, optional
-#         0 if classes are named "cell_0..cell_{K-1}", 1 if "cell_1..cell_{K}".
-#         Default: 0.
+def mask_on_graph_list(graphs, classes, *, label_base=0, strict=True):
+    """
+    In-place: apply `mask_celltype_onehot_cols` to every graph in a list.
 
-#     Notes
-#     -----
-#     - Requires `data.feature_names` to locate the one-hot columns (from
-#       `append_celltype_onehot_pyg`). If not present, the graph is skipped.
-#     - This zeros the selected columns for **all rows** (nodes) of each graph.
-#     """
-#     def _mask_one_graph(data):
-#         if not hasattr(data, "feature_names") or data.feature_names is None:
-#             return
-#         name_to_col = {n: i for i, n in enumerate(data.feature_names)}
-#         wanted = [f"cell_{c}" for c in classes_to_mask] if label_base in (0, 1) else []
-#         cols = [name_to_col[n] for n in wanted if n in name_to_col]
-#         if cols:
-#             data.x[:, cols] = 0.0  # in-place
+    Parameters
+    ----------
+    graphs : list[torch_geometric.data.Data]
+        A list (or tuple) of PyG `Data` objects. Each item is modified in place.
+    classes : Iterable[int]
+        Class IDs whose one-hot columns should be set to 0 in every graph.
+    label_base : int, optional
+        Kept for API symmetry with your encoding function. Not used directly.
+    strict : bool, optional
+        If True, raise a TypeError when an item is not a `Data` instance.
+        If False, silently skip non-`Data` items. Default is True.
 
-#     def _apply(obj):
-#         # Unwrap DataLoader -> dataset
-#         if hasattr(obj, "dataset") and not hasattr(obj, "x"):
-#             return _apply(obj.dataset)
-
-#         # Unwrap Subset recursively
-#         if isinstance(obj, Subset):
-#             return _apply(obj.dataset)
-
-#         # List/Tuple of things
-#         if isinstance(obj, (list, tuple)):
-#             for item in obj:
-#                 _apply(item)
-#             return
-
-#         # Dataset-like
-#         if hasattr(obj, "__len__") and hasattr(obj, "__getitem__") and not hasattr(obj, "x"):
-#             # Try to modify returned graphs; assign back when possible
-#             for i in range(len(obj)):
-#                 g = obj[i]
-#                 _mask_one_graph(g)
-#                 try:
-#                     obj[i] = g
-#                 except Exception:
-#                     pass
-#             return
-
-#         # Single graph
-#         if hasattr(obj, "x"):  # PyG Data
-#             _mask_one_graph(obj)
-
-#     _apply(target)
+    Returns
+    -------
+    None
+        Operates in-place on each `Data` in `graphs`.
+    """
+    for i, d in enumerate(graphs):
+        if strict and not isinstance(d, Data):
+            raise TypeError(f"graphs[{i}] is {type(d)}; expected torch_geometric.data.Data")
+        if isinstance(d, Data):
+            mask_celltype_onehot_cols(d, classes, label_base=label_base)
 
 
-# def install_mask_celltype_onehot(targets, classes_to_mask=(4, 5), *, label_base=0):
-#     """
-#     Attach a transform that zeros the specified one-hot columns in `data.x`
-#     for every graph yielded by the given loaders/datasets.
 
-#     Call once before training:
-#         install_mask_celltype_onehot([train_loader, val_loader, test_loader],
-#                                      classes_to_mask=(4,5),
-#                                      label_base=cfg.label_base)
-#     """
-#     def mask_once(data):
-#         # Only touch the one-hot block; require feature_names from append_celltype_onehot_pyg
-#         fn = getattr(data, "feature_names", None)
-#         if fn is None:
-#             return data
-#         name_to_col = {n: i for i, n in enumerate(fn)}
-#         wanted = [f"cell_{c}" for c in classes_to_mask] if label_base in (0, 1) else []
-#         cols = [name_to_col[n] for n in wanted if n in name_to_col]
-#         if cols:
-#             data.x[:, cols] = 0.0  # in-place, nothing else touched
-#         return data
 
-#     def add_transform(ds):
-#         # unwrap Subset to the real dataset carrying the transform
-#         while isinstance(ds, Subset):
-#             ds = ds.dataset
-#         base = getattr(ds, "transform", None)
-#         if base is None:
-#             ds.transform = mask_once
-#         else:
-#             # compose: base first, then mask
-#             def chained(d, b=base):
-#                 return mask_once(b(d))
-#             ds.transform = chained
 
-#     def handle(obj):
-#         if obj is None:
-#             return
-#         # If it's a DataLoader, recurse into its dataset
-#         if hasattr(obj, "dataset") and not hasattr(obj, "x"):
-#             return handle(obj.dataset)
-#         # If it's a list/tuple of things, apply to each
-#         if isinstance(obj, (list, tuple)):
-#             for it in obj:
-#                 handle(it)
-#             return
-#         # Dataset-like (has __len__/__getitem__)
-#         if hasattr(obj, "__len__") and hasattr(obj, "__getitem__") and not hasattr(obj, "x"):
-#             add_transform(obj)
-#             return
-#         # Single Data graph
-#         if hasattr(obj, "x"):
-#             mask_once(obj)
+def sanity_check_graph_list(graphs, classes=(4, 5), *, label_base=0, verbose=True):
+    """
+    Validate that a list of graphs is ready for batching after masking.
 
-#     handle(targets)
+    Assumes you have already:
+      1) Converted items to `torch_geometric.data.Data`
+      2) Run `append_celltype_onehot_pyg` (so `feature_names` exists)
+      3) Applied `mask_on_graph_list(graphs, classes, ...)`
+
+    This function checks:
+      - All items are `Data`
+      - The mask function operates in-place and returns None
+      - The named one-hot columns exist in `feature_names`
+      - Those columns are zero for all graphs
+      - Feature dimensions are consistent across graphs
+
+    Parameters
+    ----------
+    graphs : list[torch_geometric.data.Data]
+        Non-empty list/tuple of `Data` objects to verify.
+    classes : Iterable[int], optional
+        Targeted class IDs that should have been zeroed. Default: (4, 5).
+    label_base : int, optional
+        Kept for API symmetry. Not used directly. Default is 0.
+    verbose : bool, optional
+        If True, prints a short success message when all checks pass.
+
+    Returns
+    -------
+    True
+        If all checks pass. Raises AssertionError otherwise.
+    """
+    assert isinstance(graphs, (list, tuple)) and len(graphs) > 0, \
+        "graphs must be a non-empty list/tuple of Data."
+
+    # 1) All items are Data (not Tensors, not Datasets)
+    for i, g in enumerate(graphs):
+        assert isinstance(g, Data), f"graphs[{i}] is {type(g)}; expected torch_geometric.data.Data"
+
+    # 2) mask function works in-place and returns None (dry-run on first graph)
+    ret = mask_celltype_onehot_cols(graphs[0], classes, label_base=label_base)
+    assert ret is None, "mask function must operate in-place and return None."
+
+    # 3) Feature names contain the targeted one-hot columns
+    fn = getattr(graphs[0], "feature_names", None)
+    assert fn is not None, "feature_names missing; run append_celltype_onehot_pyg before masking."
+    col_names = [f"cell_{c}" for c in classes]
+    missing = [n for n in col_names if n not in fn]
+    assert not missing, f"Missing columns in feature_names: {missing}"
+
+    # 4) Columns are actually zeroed after masking (for all graphs)
+    name_to_col = {n: i for i, n in enumerate(fn)}
+    cols = [name_to_col[n] for n in col_names if n in name_to_col]
+    for i, g in enumerate(graphs):
+        if hasattr(g, "x"):
+            s = g.x[:, cols].abs().sum().item()
+            assert s == 0.0, f"masking failed for graphs[{i}]: sum(|masked cols|)={s}"
+
+    # 5) Feature shapes are consistent across graphs
+    D = graphs[0].x.size(1)
+    for i, g in enumerate(graphs):
+        assert g.x.dim() == 2 and g.x.size(1) == D, \
+            f"graphs[{i}] has inconsistent feature shape {tuple(g.x.shape)}"
+
+    if verbose:
+        print(f"[sanity_check_graph_list] OK: {len(graphs)} graphs, "
+              f"masked columns {col_names}, feature_dim={D}")
+
+    return True
+
 
 
