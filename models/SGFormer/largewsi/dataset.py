@@ -167,7 +167,8 @@ def load_dataset_extra(data_dir,
             dataname, 
             nodestype=nodestype,
             train_prop=train_prop, 
-            valid_prop=valid_prop 
+            valid_prop=valid_prop, 
+            sub_datasetname=sub_dataset
             )
     elif dataname == 'skinwsi':
         dataset = load_skinwsi_dataset(
@@ -182,7 +183,8 @@ def load_dataset_extra(data_dir,
             data_dir, 
             dataname, 
             train_prop=train_prop, 
-            valid_prop=valid_prop 
+            valid_prop=valid_prop, 
+            sub_datasetname=sub_dataset
             )
 
 
@@ -232,11 +234,12 @@ def load_skinwsi_onegraphdataset(data_dir,
     nodestype='allclasses', 
     seed=42, 
     train_prop=0.5, 
-    valid_prop=0.25
+    valid_prop=0.25, 
+    sub_datasetname=""
     ):
 
     #graphname="graph_r50_4539-14.pt"
-    graphname = "graph_r50_4539-14_simplified_3-hops-ngbr.pt" 
+    graphname = sub_datasetname
     graph_path = data_dir + dataname +  '/' + graphname
     graph_dict = torch.load(graph_path)
 
@@ -350,7 +353,8 @@ def load_subgraphs_skinwsi_dataset(data_dir,
     dataname, 
     seed=42, 
     train_prop=0.5, 
-    valid_prop=0.25
+    valid_prop=0.25,
+    sub_datasetname=""
     ):
 
     # will be very similar than skinwsi at least in the beginning
@@ -361,7 +365,7 @@ def load_subgraphs_skinwsi_dataset(data_dir,
         data_folder = data_dir + dataname + '/'
     # could be modified for one graph dataset:
     elif dataname=="subgraphs-onegraphskinwsi":
-        data_folder = data_dir + 'subgraphs-onegraphskinwsi' + '/r50_mote_4434-18/' 
+        data_folder = data_dir + 'subgraphs-onegraphskinwsi/'+ sub_datasetname + '/' 
 
     for file in os.listdir(data_folder):
         if file.endswith(".pt"):

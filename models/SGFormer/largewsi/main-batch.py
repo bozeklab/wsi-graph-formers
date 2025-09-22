@@ -46,6 +46,8 @@ def main(cfg: DictConfig):
     # change depending on the dataset choosen for instance
     nodestype = cfg.nodestype 
 
+    print("here is the dataset selected: {}".format(cfg.dataset))
+
     ### Load and preprocess data ###
     if cfg.dataset == 'skinwsi':
             graph_list = load_dataset_extra(
@@ -54,7 +56,7 @@ def main(cfg: DictConfig):
                 nodestype, 
                 cfg.train_prop, 
                 cfg.valid_prop,
-                cfg.sub_dataset
+                cfg.sub_datasetname
                 )
 
     elif cfg.dataset == 'subgraphs-skinwsi':
@@ -66,7 +68,7 @@ def main(cfg: DictConfig):
                 nodestype, 
                 cfg.train_prop, 
                 cfg.valid_prop,
-                cfg.sub_dataset
+                cfg.sub_datasetname
                 )
 
     elif cfg.dataset == 'subgraphs-onegraphskinwsi':
@@ -78,7 +80,7 @@ def main(cfg: DictConfig):
                 nodestype, 
                 cfg.train_prop, 
                 cfg.valid_prop,
-                cfg.sub_dataset
+                cfg.sub_datasetname
                 )
 
 
