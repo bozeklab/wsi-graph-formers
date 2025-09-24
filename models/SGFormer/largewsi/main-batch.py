@@ -37,7 +37,6 @@ from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
 
 
 
-
 @hydra.main(config_path="../../../configs/SGFormer", config_name="config_largewsi", version_base=None)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))  # print config nicely
@@ -46,7 +45,7 @@ def main(cfg: DictConfig):
     # change depending on the dataset choosen for instance
     nodestype = cfg.nodestype 
 
-    print("here is the dataset selected: {}".format(cfg.dataset))
+    print("Here is the dataset selected: {}".format(cfg.dataset))
 
     ### Load and preprocess data ###
     if cfg.dataset == 'skinwsi':

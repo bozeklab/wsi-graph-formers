@@ -228,52 +228,7 @@ def write_fold(
     # Ensure data is flushed
     del img_mm
     del msk_mm
-    fold_dir = out_root / f"fold{fold_idx}"
-    fold_dir.mkdir(parents=True, exist_ok=True)
 
-    img_path = fold_dir / 'images.npy'
-    msk_path = fold_dir / 'masks.npy'  # stores chosen mask_key array per tile
-
-    # Create memmaps
-    img_mm = np.lib.format.open_memmap(
-        img_path, mode='w+', dtype=np.uint8, shape=(len(stems), H, W, C_img)
-    )
-    # masks: pick a compact dtype (uint8), adjust if needed later
-    msk_mm = np.lib.format.open_memmap(
-        msk_path, mode='w+', dtype=np.uint8, shape=(len(stems), H, W, C_msk)
-    )
-
-    for i, stem in enumerate(tqdm(stems, desc=f"fold{fold_idx}", unit="tile")):
-        png_p, npz_p = pair_map[stem]
-        img = load_image(png_p)
-        msk = extract_mask_from_npz(npz_p, key_preference=mask_key)
-        # Basic validations
-        if img.shape[:2] != (H, W):
-            raise RuntimeError(f"Image shape mismatch for {stem}: {img.shape} vs {(H, W)}")
-        if msk.shape[0] != H or msk.shape[1] != W:
-            raise RuntimeError(f"Mask shape mismatch for {stem}: {msk.shape} vs {(H, W)}")
-        if img.ndim == 2:
-            img = img[..., None]
-        if msk.ndim == 2:
-            msk = msk[..., None]
-        if img.shape[2] != C_img:
-            raise RuntimeError(f"Inconsistent image channels for {stem}: {img.shape}")
-        if msk.shape[2] != C_msk:
-            # If C differs but one is 1 and the other is N, try to broadcast single-channel
-            if msk.shape[2] == 1 and C_msk > 1:
-                msk = np.repeat(msk, C_msk, axis=2)
-            else:
-                raise RuntimeError(f"Inconsistent mask channels for {stem}: {msk.shape[2]} vs {C_msk}")
-
-        img_mm[i] = img.astype(np.uint8)
-        # try to fit into uint8; if out-of-range, clip
-        if np.issubdtype(msk.dtype, np.floating):
-            msk = np.nan_to_num(msk)
-        msk_mm[i] = np.clip(msk, 0, 255).astype(np.uint8)
-
-    # Ensure data is flushed
-    del img_mm
-    del msk_mm
 
 
 def compute_major_class_for_tiles(stems: List[str], pair_map: Dict[str, Tuple[Path, Path]], mask_key: str) -> Dict[str, int]:

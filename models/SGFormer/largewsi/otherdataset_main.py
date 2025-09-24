@@ -33,62 +33,11 @@ warnings.filterwarnings('ignore')
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
-    append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_on_graph_list, \
-    sanity_check_graph_list 
-
-
 
 
 @hydra.main(config_path="../../../configs/SGFormer", config_name="config_largewsi", version_base=None)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))  # print config nicely
-
-    # we don't want to extract the nodestype from the cofig all along but only once as it can
-    # change depending on the dataset choosen for instance
-    nodestype = cfg.nodestype 
-
-    print("Here is the dataset selected: {}".format(cfg.dataset))
-
-    ### Load and preprocess data ###
-    if cfg.dataset == 'onegraphskinwsi':
-            dataset = load_dataset_extra(
-                cfg.data_dir, 
-                cfg.dataset, 
-                cfg.nodestype, 
-                cfg.train_prop, 
-                cfg.valid_prop,
-                cfg.sub_dataset
-                )
-
-    # elif cfg.dataset == 'subgraphs-onegraphskinwsi':
-    #         # for subgraphs we only keep one node type 
-    #         nodestype = "allclasses"
-    #         graph_list = load_dataset_extra(
-    #             cfg.data_dir, 
-    #             cfg.dataset, 
-    #             nodestype, 
-    #             cfg.train_prop, 
-    #             cfg.valid_prop,
-    #             cfg.sub_datasetname
-    #             )
-
-    elif cfg.dataset == 'skinwsi' or cfg.dataset == 'subgraphs-skinwsi': 
-        raise ValueError(
-            "skinwsi and subgraphs-skinwsi datasets fit only for training with batches."
-            "For the training without batches, use onegraphskinwsi")
-
-
-    else:
-        raise ValueError(
-            "Only onegraphskinwsi dataset can be used to run this code")
-
-
-
-    if len(dataset.label.shape) == 1:
-        dataset.label = dataset.label.unsqueeze(1)
-    dataset.label = dataset.label.to(cfg.device)
-
 
 
     # NOTE: for consistent data splits, see data_utils.rand_train_test_idx
@@ -107,91 +56,48 @@ def main(cfg: DictConfig):
         device = torch.device("cuda:" + str(cfg.device)) if torch.cuda.is_available() else torch.device("cpu")
 
 
-    torch.manual_seed(cfg.seed)
+    ### Load and preprocess data ###
+    if cfg.customload:
+        if cfg.dataset == 'onegraphskinwsi':
+            dataset = load_dataset_extra(
+                cfg.data_dir, 
+                cfg.dataset, 
+                cfg.nodestype, 
+                cfg.train_prop, 
+                cfg.valid_prop,
+                cfg.sub_dataset
+                )
+        elif cfg.dataset == 'skinwsi': 
+            raise ValueError(
+                "skinwsi dataset fit only for training with batches."
+                "For the training without batches, use onegraphskinwsi")
+
+    else:
+        dataset = load_dataset(cfg.data_dir, cfg.dataset, cfg.sub_dataset)
+
+    if len(dataset.label.shape) == 1:
+        dataset.label = dataset.label.unsqueeze(1)
+    dataset.label = dataset.label.to(device)
 
 
     #### get the splits for all runs
-    split_idx_dict = dataset.load_fixed_splits()
-    train_idx = split_idx_dict['train']
-    val_idx = split_idx_dict['val']
-    test_idx = split_idx_dict['test']
+    if cfg.rand_split:
+        split_idx_lst = [dataset.get_idx_split(train_prop=cfg.train_prop, valid_prop=cfg.valid_prop)
+                         for _ in range(cfg.runs)]
 
-    #to copy the logic of batching on a list of graph (main-batch)
-    train_data = list(train_idx)
-    val_data =list(val_idx)
-    test_data = list(test_idx)
+    elif cfg.rand_split_class:
+        split_idx_lst = [dataset.get_idx_split(split_type='class', label_num_per_class=cfg.label_num_per_class)
+                         for _ in range(cfg.runs)]
 
+    elif cfg.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products']:
+        split_idx_lst = [dataset.load_fixed_splits()
+                         for _ in range(cfg.runs)]
 
-    ### Normalization of features ###
-    if cfg.zscore_normalization:
-        centroid_idx = [1,2]
-        cont_idx = [0]
-        cont_idx = cont_idx + list(range(3, dataset.graph['node_feat'].shape[1]))  # all but centroid
+    elif cfg.dataset == 'onegraphskinwsi':
+        split_idx_dict = dataset.load_fixed_splits()
 
-        # Fit on TRAIN graphs only
-        stats = fit_zscore_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
-
-        if cfg.celltype_asfeature:
-
-            ## Add cell type as a feature after normalization###
-
-            # Apply the *same* stats to every split
-            train_data = [normalize_encode_celltype_pyg(
-                                          g, 
-                                          stats, 
-                                          cont_idx=cont_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None
-                                          ) for g in train_data]
-            val_data = [normalize_encode_celltype_pyg(
-                                          g, 
-                                          stats, 
-                                          cont_idx=cont_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None
-                                          ) for g in val_data]
-            test_data = [normalize_encode_celltype_pyg(
-                                          g, 
-                                          stats, 
-                                          cont_idx=cont_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None
-                                          ) for g in test_data]
-        else: 
-            # Apply the *same* stats to every split
-            train_data = [normalize_zscore_pyg(
-                                        g, 
-                                        stats, 
-                                        cont_idx=cont_idx,
-                                        centroid_idx=centroid_idx,
-                                        normalize_centroid=None
-                                        ) for g in train_data]
-            val_data   = [normalize_zscore_pyg(
-                                        g, 
-                                        stats, 
-                                        cont_idx=cont_idx,
-                                        centroid_idx=centroid_idx,
-                                        normalize_centroid=None
-                                        ) for g in val_data]
-            test_data  = [normalize_zscore_pyg(
-                                        g, 
-                                        stats, 
-                                        cont_idx=cont_idx,
-                                        centroid_idx=centroid_idx,
-                                        normalize_centroid=None
-                                        ) for g in test_data]
-
-
-    ## Add cell type as a feature and skip normalization###
-    # gamma is useful only if there is a z-scoring normalization so put to 1 here 
-    if not cfg.zscore_normalization and cfg.celltype_asfeature:
-        train_data = [append_celltype_onehot_pyg(g,gamma=1) for g in train_data]
-        val_data = [append_celltype_onehot_pyg(g,gamma=1) for g in val_data]
-        test_data = [append_celltype_onehot_pyg(g,gamma=1) for g in test_data]
-
+    else:
+        split_idx_lst = load_fixed_splits(cfg.data_dir, dataset, name=cfg.dataset, protocol=cfg.protocol)
 
 
 
@@ -275,9 +181,15 @@ def main(cfg: DictConfig):
 
 
     ### Training loop ###
-    split_idx = split_idx_dict
-
     for run in range(cfg.runs):
+        if cfg.dataset in ['cora', 'citeseer', 'pubmed'] and cfg.protocol == 'semi':
+            split_idx = split_idx_lst[0]
+        elif cfg.dataset == "onegraphskinwsi":
+            # there is only one run of train/val/test (for now)
+            split_idx = split_idx_dict
+        else:
+            split_idx = split_idx_lst[run]
+
 
         train_idx = split_idx['train'].to(device)
 
