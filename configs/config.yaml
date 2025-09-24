@@ -45,15 +45,36 @@ backend: pyg  # [nx, pyg]
 max_nodes_display: 300000
 figsize: [10, 10]
 
-# baseline training dataset 
+
+
+### baseline training dataset 
+
+# wsijson_to_trainset.py 
 json_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 previous_steps/hvn_output_fullwsi/"
-output_baselineset: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/"
-tmp_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/tempcache/"
+output_baselineset: /data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/
+tmp_dir: /data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/tempcache/
 tile_size: 256
 no_bbox: False 
 generate_npz: False 
 generate_png: True
 png_level: 0 
 png_overwrite: False
+
+# gen_pannukeformat
+concat:
+  tiles_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
+  4434-18/4434-18" 
+  out_root: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
+  4434-18/out_folds"   
+  # The rest default to PanNuke format:
+  folds: 3
+  seed: 1337
+  stratify: False
+  mask_key: type_map
+  pannuke: True
+  num_classes: 5
+  class_map: [1,2,3,4,5]
+  fold_index_starts_at_one: False
+
 

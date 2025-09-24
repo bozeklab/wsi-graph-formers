@@ -1,8 +1,7 @@
 # configfile.yaml
 defaults:
   - _self_
-  - experiments: SGFormer_subgraphs_100splits_3_max_hops_only_mor_feat_zscoring
-
+  - experiments: SGFormer_subgraphs_100splits_3_max_hops_only_mor_feat
 
 ## base configs
 dataset: ""

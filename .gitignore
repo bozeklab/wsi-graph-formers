@@ -10,6 +10,7 @@
 
 # Results
 outputs/
+**/outputs/ 
 results/
 **/results/
 predictions/
