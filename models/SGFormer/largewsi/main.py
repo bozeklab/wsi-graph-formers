@@ -58,7 +58,7 @@ def main(cfg: DictConfig):
                 cfg.nodestype, 
                 cfg.train_prop, 
                 cfg.valid_prop,
-                cfg.sub_dataset
+                cfg.sub_datasetname
                 )
 
     # elif cfg.dataset == 'subgraphs-onegraphskinwsi':

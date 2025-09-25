@@ -1,3 +1,8 @@
+"""
+Lucas Sancéré 2025
+"""
+
+
 #!/usr/bin/env python3
 """
 Concatenate PanNuke-style tiles (PNG images + NPZ masks) into N folds of .npy arrays. Defaults to 3 folds and uses the **type_map** from your NPZs as the label.
@@ -17,9 +22,11 @@ Output directory structure:
 Notes
 -----
 - We auto-pair PNGs and NPZs by stem (filename without extension).
-- The NPZs you generate contain `type_map` (uint8, classes 0..5 with 0=background) and `inst_map` (int32 instance IDs). By default we read `type_map`. You can choose a specific key via `--mask-key`.
+- The NPZs you generate contain `type_map` (uint8, classes 0..N with 0=background) and `inst_map` (int32 instance IDs). 
+By default we read `type_map`. You can choose a specific key via `--mask-key`.
 - All images and masks must share the same spatial shape (H, W). We'll infer channels from the first files.
 - Saves as .npy using memmaps to be memory-safe for large datasets.
+
 
 Example
 -------
@@ -29,12 +36,14 @@ python pannuke_concat_to_folds.py \
     --folds 3 \
     --seed 1337
 """
-from __future__ import annotations
+
+
+import json
 import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
@@ -46,6 +55,38 @@ from hydra.utils import to_absolute_path
 # ----------------------
 # Helpers
 # ----------------------
+
+
+def _squeeze_hw(arr: np.ndarray) -> np.ndarray:
+    """Return (H,W) for arrays that might be (H,W) or (H,W,1)."""
+    if arr.ndim == 3 and arr.shape[2] == 1:
+        return arr[..., 0]
+    return arr
+
+
+def count_cells_by_type(type_map: np.ndarray,
+                        inst_map: np.ndarray,
+                        classes: List[int] = None) -> Dict[int, int]:
+    """
+    Count distinct instance IDs (inst_map>0) for each semantic class in `classes`.
+    Assumes your pipeline produces a uniform class per instance (as in your rasterization).
+    Returns: {class_id: cell_count}
+    """
+    tmap = _squeeze_hw(np.asarray(type_map))
+    inst = _squeeze_hw(np.asarray(inst_map))
+
+    if tmap.shape != inst.shape:
+        raise ValueError(f"type_map and inst_map shapes differ: {tmap.shape} vs {inst.shape}")
+
+    counts: Dict[int, int] = {}
+    labels = classes if classes is not None else [int(x) for x in np.unique(tmap) if x != 0]
+    for lab in labels:
+        if lab == 0:
+            continue
+        ids = np.unique(inst[(tmap == lab) & (inst > 0)])
+        counts[int(lab)] = int(len(ids))
+    return counts
+
 
 def discover_pairs(root: Path) -> List[Tuple[Path, Path, str]]:
     """Return list of (png_path, npz_path, stem) for paired tiles.
@@ -156,64 +197,91 @@ def write_fold(
     C_img: int,
     C_msk: int,
     mask_key: str,
-    pannuke: bool = False,
+    pannuke: bool = False,           # kept for API compatibility; ignored when mask_key=='type_map'
     num_classes: int = 5,
-    class_order: List[int] | None = None,
-):
+    class_order: Optional[List[int]] = None,
+) -> None:
+    """
+    Write one fold to disk:
+      - images.npy  -> (N, H, W, C_img) uint8
+      - masks.npy   -> (N, H, W, K) uint8  (K = num_classes when mask_key=='type_map',
+                                            else K = C_msk)
+      - stats.json  -> tiles_kept, cells_per_class, total_cells
+    One-hot encoding is always used when mask_key=='type_map' (CellViT-friendly).
+    Also collects cell counts per class using 'inst_map' if present.
+    """
     fold_dir = out_root / f"fold{fold_idx}"
     fold_dir.mkdir(parents=True, exist_ok=True)
 
-    img_path = fold_dir / 'images.npy'
-    msk_path = fold_dir / 'masks.npy'  # stores chosen mask_key array per tile
+    img_path = fold_dir / "images.npy"
+    msk_path = fold_dir / "masks.npy"
 
-    # Create memmaps
+    # Prepare class mapping/order
+    if class_order is None:
+        class_order = list(range(1, num_classes + 1))  # e.g., [1,2,3,4,5] or [1..6]
+    label_to_ch: Dict[int, int] = {lab: ci for ci, lab in enumerate(class_order)}
+
+    # One-hot is forced for type_map to satisfy prepare_pannuke.py
+    save_onehot = (mask_key == "type_map")
+    out_C_msk = num_classes if save_onehot else C_msk
+
+    # Per-fold cell counts (for classes in class_order)
+    cells_per_class: Dict[int, int] = {c: 0 for c in class_order}
+
+    # Allocate memmaps
+    N = len(stems)
     img_mm = np.lib.format.open_memmap(
-        img_path, mode='w+', dtype=np.uint8, shape=(len(stems), H, W, C_img)
+        img_path, mode="w+", dtype=np.uint8, shape=(N, H, W, C_img)
     )
-    # masks: for PanNuke we want one-hot channels=num_classes; else keep C_msk
-    out_C_msk = num_classes if pannuke and mask_key == 'type_map' else C_msk
     msk_mm = np.lib.format.open_memmap(
-        msk_path, mode='w+', dtype=np.uint8, shape=(len(stems), H, W, out_C_msk)
+        msk_path, mode="w+", dtype=np.uint8, shape=(N, H, W, out_C_msk)
     )
 
-    # Prepare class order mapping
-    if pannuke and mask_key == 'type_map':
-        if class_order is None:
-            # default assumes labels 1..num_classes map to channels 0..num_classes-1
-            class_order = list(range(1, num_classes + 1))
-        # map label -> channel index
-        label_to_ch = {lab: ci for ci, lab in enumerate(class_order)}
-
+    # Iterate tiles
     for i, stem in enumerate(tqdm(stems, desc=f"fold{fold_idx}", unit="tile")):
         png_p, npz_p = pair_map[stem]
-        img = load_image(png_p)
-        msk = extract_mask_from_npz(npz_p, key_preference=mask_key)
-        # Basic validations
+
+        # ---- load and validate image ----
+        img = load_image(png_p)  # (H,W,3) RGB
         if img.shape[:2] != (H, W):
             raise RuntimeError(f"Image shape mismatch for {stem}: {img.shape} vs {(H, W)}")
-        if msk.shape[0] != H or msk.shape[1] != W:
-            raise RuntimeError(f"Mask shape mismatch for {stem}: {msk.shape} vs {(H, W)}")
         if img.ndim == 2:
             img = img[..., None]
-        if msk.ndim == 2:
-            msk = msk[..., None]
+        # enforce C_img
         if img.shape[2] != C_img:
-            raise RuntimeError(f"Inconsistent image channels for {stem}: {img.shape}")
-
+            if img.shape[2] == 1 and C_img == 3:
+                img = np.repeat(img, 3, axis=2)
+            elif img.shape[2] != C_img:
+                raise RuntimeError(f"Inconsistent image channels for {stem}: {img.shape[2]} vs {C_img}")
         img_mm[i] = img.astype(np.uint8)
 
-        # --- PanNuke one-hot conversion ---
-        if pannuke and mask_key == 'type_map':
-            # ensure we have 2D label map
-            lab = msk[..., 0] if msk.ndim == 3 else msk
-            # Build one-hot (H,W,num_classes)
+        # ---- load label map (type_map or other) ----
+        msk = extract_mask_from_npz(npz_p, key_preference=mask_key)  # (H,W) or (H,W,1)
+        lab2d = _squeeze_hw(msk)
+        if lab2d.shape != (H, W):
+            raise RuntimeError(f"Mask shape mismatch for {stem}: {lab2d.shape} vs {(H, W)}")
+
+        # ---- accumulate cell counts from inst_map when possible ----
+        try:
+            inst_map = extract_mask_from_npz(npz_p, key_preference="inst_map")
+            inst2d = _squeeze_hw(inst_map)
+            if inst2d.shape == (H, W):
+                per_tile = count_cells_by_type(lab2d, inst2d, classes=class_order)
+                for c, v in per_tile.items():
+                    cells_per_class[c] = cells_per_class.get(c, 0) + int(v)
+        except Exception:
+            # if inst_map missing/malformed, skip counting for this tile
+            pass
+
+        # ---- write mask ----
+        if save_onehot:
+            # one-hot over 'num_classes' channels using class_order
             oh = np.zeros((H, W, num_classes), dtype=np.uint8)
-            # assign each specified label to its channel
             for lab_val, ch in label_to_ch.items():
-                oh[..., ch] = (lab == lab_val).astype(np.uint8)
+                oh[..., ch] = (lab2d == lab_val).astype(np.uint8)
             msk_mm[i] = oh
         else:
-            # Generic path: clip to uint8, broadcast if needed
+            # generic path: preserve incoming channels (C_msk)
             if msk.ndim == 2:
                 msk = msk[..., None]
             if msk.shape[2] != out_C_msk:
@@ -225,9 +293,19 @@ def write_fold(
                 msk = np.nan_to_num(msk)
             msk_mm[i] = np.clip(msk, 0, 255).astype(np.uint8)
 
-    # Ensure data is flushed
+    # flush memmaps
     del img_mm
     del msk_mm
+
+    # ---- write stats ----
+    stats = {
+        "tiles_kept": int(N),
+        "cells_per_class": {str(c): int(cells_per_class.get(c, 0)) for c in sorted(cells_per_class)},
+        "total_cells": int(sum(cells_per_class.values())),
+    }
+    with open(fold_dir / "stats.json", "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+    print(f"[STATS] fold{fold_idx}: tiles={N} | cells: {stats['cells_per_class']}")
 
 
 
@@ -279,45 +357,39 @@ def stratified_split(stems: List[str], labels: Dict[str, int], folds: int, seed:
 
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
-    """Hydra entry point. Reads config keys if present; falls back to PanNuke defaults.
-
-    Expected config keys (put them anywhere in your cfg; shown here under `concat`):
-
-    concat:
-      tiles_dir: /abs/or/rel/path/to/tiles   # required
-      out_root:  ./out_folds                 # default
-      folds:     3                           # default PanNuke-style
-      seed:      1337                        # default
-      stratify:  false                       # default
-      mask_key:  type_map                    # default
-      pannuke:   true                        # default (one-hot 5 channels)
-      num_classes: 5                         # default PanNuke
-      class_map: [1,2,3,4,5]                 # default class order
-      fold_index_starts_at_one: false        # default False → fold0, fold1, fold2
-    """
-    section = getattr(cfg, 'concat', cfg)
 
     # Resolve paths via Hydra's original CWD
-    tiles_dir = Path(to_absolute_path(str(getattr(section, 'tiles_dir', '.'))))
-    out_root  = Path(to_absolute_path(str(getattr(section, 'out_root', './out_folds'))))
+    tiles_dir = Path(to_absolute_path(str(cfg.concat.tiles_dir)))
+    out_root  = Path(to_absolute_path(str(cfg.concat.out_root)))
 
-    folds     = int(getattr(section, 'folds', 3))
-    seed      = int(getattr(section, 'seed', 1337))
-    stratify  = bool(getattr(section, 'stratify', False))
+    folds     = int(cfg.concat.folds)
+    seed      = int(cfg.concat.seed)
+    stratify  = bool(cfg.concat.stratify)
 
-    mask_key  = str(getattr(section, 'mask_key', 'type_map'))
-    pannuke   = bool(getattr(section, 'pannuke', True))
-    num_classes = int(getattr(section, 'num_classes', 5))
-    class_map = getattr(section, 'class_map', [1,2,3,4,5])
+    mask_key     = str(cfg.concat.mask_key)
+    pannuke      = bool(cfg.concat.pannuke)
+    num_classes  = int(cfg.concat.num_classes)
+    class_map    = list(cfg.concat.class_map)
+    start_at_one = bool(cfg.concat.fold_index_starts_at_one)
+
+    out_root.mkdir(parents=True, exist_ok=True)
+
+
+
+    # check if len(class_map) and num_classes are indeed matching
+    if len(class_map) != num_classes:
+        print(f"[WARN] class_map length {len(class_map)} != num_classes {num_classes}; "
+              f"resetting to 1..{num_classes}")
+        class_map = list(range(1, num_classes + 1))
+
     # Accept CSV string too
     if isinstance(class_map, str):
         try:
             class_map = [int(x.strip()) for x in class_map.split(',') if x.strip()]
         except Exception:
             class_map = [1,2,3,4,5]
-    start_at_one = bool(getattr(section, 'fold_index_starts_at_one', False))
 
-    out_root.mkdir(parents=True, exist_ok=True)
+
 
     pairs = discover_pairs(tiles_dir)
     pair_map: Dict[str, Tuple[Path, Path]] = {s: (png, npz) for (png, npz, s) in pairs}

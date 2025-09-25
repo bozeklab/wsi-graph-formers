@@ -61,20 +61,30 @@ generate_png: True
 png_level: 0 
 png_overwrite: False
 
-# gen_pannukeformat
+# concat pannuke6cformat and binaryformat 
 concat:
   tiles_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
   4434-18/4434-18" 
   out_root: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  4434-18/out_folds"   
-  # The rest default to PanNuke format:
+  4434-18/folds_6clsformat"   
   folds: 3
   seed: 1337
-  stratify: False
   mask_key: type_map
-  pannuke: True
-  num_classes: 5
-  class_map: [1,2,3,4,5]
   fold_index_starts_at_one: False
+  num_classes: 6
+  export_onehot_for_cellvit: True 
+  # for 6 classes format 
+  stratify: False
+  pannuke: True
+  class_map: [1,2,3,4,5,6]
+  # for binary format
+  channel_map: {1: 4, 2: 5}
+  ratio_threshold: 0.9  
+  stratify_by_major: True 
+
+
+
+baselinedata_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
+4434-18/CellViT_4434-18"
 
 

@@ -398,7 +398,7 @@ def stage_b_rasterize_tiles(
     For each `shard_{ty}_{tx}.jsonl`, this creates `<stem>_tile_{ty}_{tx}.npz`
     with:
       - inst_map : int32[tile, tile]   (tile-local instance ids 1..K)
-      - type_map : uint8[tile, tile]   (per-pixel class 0..5; 0=background)
+      - type_map : uint8[tile, tile]   (per-pixel class 0..6; 0=background)
 
     Parameters
     ----------
@@ -737,7 +737,7 @@ pip install numpy opencv-python tqdm openslide-python openslide-bin
 
 Outputs per tile (.npz):
 - inst_map: (tile, tile) int32   (tile-local instance IDs 1..K)
-- type_map: (tile, tile) uint8   (0..5; 0=background)
+- type_map: (tile, tile) uint8   (0..6; 0=background)
 """
 
 
