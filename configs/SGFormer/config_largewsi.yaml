@@ -1,7 +1,7 @@
 # configfile.yaml
 defaults:
   - _self_
-  - experiments: SGFormer_random_nodes_3_max_hops_mor_tex_celltype_feat_zscoring
+  - experiments: SGFormer_random_nodes_no_simplification_only_mor_feat_zscoring
 
 ## base configs
 dataset: ""

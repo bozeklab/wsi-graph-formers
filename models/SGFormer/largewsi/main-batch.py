@@ -103,14 +103,15 @@ def main(cfg: DictConfig):
         torch.backends.cudnn.deterministic = True
 
     fix_seed(cfg.seed)
+    torch.manual_seed(cfg.seed)
 
+
+    # Define cuda device 
     if cfg.cpu:
         device = torch.device("cpu")
     else:
         device = torch.device("cuda:" + str(cfg.device)) if torch.cuda.is_available() else torch.device("cpu")
 
-
-    torch.manual_seed(cfg.seed)
 
 
 
@@ -265,6 +266,9 @@ def main(cfg: DictConfig):
         train_loader = DataLoader(train_data, batch_size=cfg.trainsubgraphs_batch_size, shuffle=True,  collate_fn=Batch.from_data_list)
         val_loader = DataLoader(val_data, batch_size=cfg.trainsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
         test_loader = DataLoader(test_data, batch_size=cfg.testsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
+
+
+
 
 
     ### Display information of dataset (nbr graphs and so on..) ###
