@@ -12,10 +12,11 @@ pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_
 graphs/experiments/r50_mo_4434-18/"
 
 conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-pyg_graphs/experiments/r50_mo_4434-18/"
+pyg_graphs/experiments/r50_mote_4434-18/"
 
-simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-simplified_pyg_graphs/experiments/r50_mo_4434-18/"
+simplifiedgraph_folder: ""
+# simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
+# simplified_pyg_graphs/experiments/r50_mote_4434-18/"
 
 split_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 pyg_graphs/experiments/r50_mo_4434-18_splitted100/"
@@ -36,7 +37,7 @@ with_texture: False
 max_hops: 3
  
 # graph splitting
-split_from_simplified: False  
+split_from_simplified: True   
 nbr_subgraphs: 100 
 
 # graph visualization

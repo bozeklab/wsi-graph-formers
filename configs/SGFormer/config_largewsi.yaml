@@ -1,7 +1,7 @@
 # configfile.yaml
 defaults:
   - _self_
-  - experiments: SGFormer_random_nodes_no_simplification_only_mor_feat_zscoring
+  - experiments: SGFormer_subgraphs_100splits_no_simplification_only_mor_feat_zscoring
 
 ## base configs
 dataset: ""
