@@ -3,12 +3,13 @@ Lucas Sancéré 2025
 """
 
 from __future__ import annotations
-from typing import Any
+from typing import Any, Tuple
 import numpy as np
 import torch
 from torch import Tensor
 import torch.nn.functional as F
 from torch.utils.data import Subset
+# from torch_geometric.utils import subgraph
 from torch_geometric.data import Data
 
 
@@ -663,6 +664,94 @@ def sanity_check_graph_list(graphs, classes=(4, 5), *, label_base=0, verbose=Tru
               f"masked columns {col_names}, feature_dim={D}")
 
     return True
+
+
+
+
+def induce_split_subgraph(full, node_idx):
+    """
+    Induce a subgraph that matches your schema:
+        Data(x, edge_index, edge_feat, num_nodes, label)
+
+    Nodes are relabeled to be contiguous (0..N_sub-1).
+    Edge features are sliced if available and aligned per-edge;
+    otherwise they are set to None.
+
+    Parameters
+    ----------
+    full : torch_geometric.data.Data or preproc_dataset-like
+        Either:
+          - A PyG Data object with attributes:
+                x, edge_index, num_nodes, label, (optional) edge_feat
+          - Or your preproc_dataset exposing:
+                .graph["node_feat"], .graph["edge_index"], .graph["num_nodes"],
+                .graph.get("edge_feat", None), and .label
+    node_idx : array-like or torch.Tensor
+        Indices of nodes (w.r.t. the full graph) to keep in the subgraph.
+
+    Returns
+    -------
+    split_data : torch_geometric.data.Data
+        A PyG Data object with fields:
+          - x         : node features of selected nodes
+          - edge_index: induced edges among selected nodes (reindexed)
+          - edge_feat : sliced edge features if present, else None
+          - num_nodes : number of nodes in the subgraph
+          - label     : labels of selected nodes
+    """
+    # --- extract from either Data or your preproc_dataset ---
+    if isinstance(full, Data):
+        x_full        = full.x
+        edge_index    = full.edge_index
+        label_full    = getattr(full, "label", None)
+        edge_feat_full= getattr(full, "edge_feat", None)
+        num_nodes     = int(getattr(full, "num_nodes", x_full.size(0)))
+        dev           = edge_index.device
+    else:
+        g             = full.graph
+        x_full        = g["node_feat"]
+        edge_index    = g["edge_index"]
+        label_full    = full.label
+        edge_feat_full= g.get("edge_feat", None)
+        num_nodes     = int(g["num_nodes"])
+        dev           = edge_index.device
+
+    node_idx = torch.as_tensor(node_idx, dtype=torch.long, device=dev)
+
+    # --- build a boolean node mask for edge filtering ---
+    node_mask = torch.zeros(num_nodes, dtype=torch.bool, device=dev)
+    node_mask[node_idx] = True
+
+    src, dst = edge_index[0], edge_index[1]
+    edge_mask = node_mask[src] & node_mask[dst]   # keep edges with both ends in subset
+
+    # --- slice edges ---
+    eidx_sub = edge_index[:, edge_mask]
+
+    # --- relabel nodes to 0..N_sub-1 ---
+    Ns = node_idx.numel()
+    remap = torch.full((num_nodes,), -1, dtype=torch.long, device=dev)  # old -> new
+    remap[node_idx] = torch.arange(Ns, device=dev)
+    eidx_sub = remap[eidx_sub]
+
+    # --- slice node features / labels ---
+    x_sub = x_full.index_select(0, node_idx) if x_full is not None else None
+    label_sub = label_full.index_select(0, node_idx) if label_full is not None else None
+
+    # --- slice edge features if present & aligned ---
+    if edge_feat_full is not None and edge_feat_full.size(0) == edge_index.size(1):
+        edge_feat_sub = edge_feat_full[edge_mask]
+    else:
+        edge_feat_sub = None
+
+    return Data(
+        x=x_sub,
+        edge_index=eidx_sub,
+        edge_feat=edge_feat_sub,
+        num_nodes=Ns,
+        label=label_sub,
+    )
+
 
 
 

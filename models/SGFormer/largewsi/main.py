@@ -37,7 +37,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
     append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_on_graph_list, \
-    sanity_check_graph_list
+    sanity_check_graph_list, induce_split_subgraph
  
 
 
@@ -102,11 +102,21 @@ def main(cfg: DictConfig):
 
 
 
-    ### Convert dataset into a list of torch_geometric.data.Data object:
-    converted = []
+    #### get the splits for all runs
+    train_idx, valid_idx, test_idx = custom_fixed_split(
+            preproc_dataset.label, 
+            train_prop=cfg.train_prop, 
+            valid_prop=cfg.valid_prop, 
+            seed=cfg.seed
+    )
 
+
+
+    ### Convert split list (graphs) Ò into a list of torch_geometric.data.Data objects:
+    # converted = []
+    # for g in split_list:
     if isinstance(preproc_dataset, Data):
-        data = preproc_dataset
+        pass 
     else:
         # if g is a dict with those keys
         data = Data(
@@ -115,14 +125,14 @@ def main(cfg: DictConfig):
             edge_feat= None,
             num_nodes= preproc_dataset.graph['num_nodes'],
             label= preproc_dataset.label
-            )
-        converted.append(data)
+        )
+
+        preproc_dataset = data
 
 
-    # replacement 
-    graph_list = converted
-    # IMPORTANT: here the graph list contains only one graph. This is because
-    # I am mimiking the structure of main-batch 
+
+    # generate a graph from train_idx to be able to run fit_zscore_stats_pyg with no further changes    
+    train_splitgraph = induce_split_subgraph(preproc_dataset, train_idx)
 
 
 
@@ -130,16 +140,16 @@ def main(cfg: DictConfig):
     if cfg.zscore_normalization:
         centroid_idx = [1,2]
         cont_idx = [0]
-        cont_idx = cont_idx + list(range(3, preproc_dataset.graph['node_feat'].shape[1]))  # all but centroid
+        cont_idx = cont_idx + list(range(3, preproc_dataset.x.shape[1]))  # all but centroid
 
         # Fit on TRAIN graphs only
-        stats = fit_zscore_stats_pyg(graph_list, cont_idx=cont_idx, centroid_idx=centroid_idx, device=device)
+        stats = fit_zscore_stats_pyg([train_splitgraph], cont_idx=cont_idx, centroid_idx=centroid_idx, device=device)
 
         if cfg.celltype_asfeature:
 
             ## Add cell type as a feature after normalization###
             graph = normalize_encode_celltype_pyg(
-                                          graph_list[0], 
+                                          preproc_dataset, 
                                           stats, 
                                           cont_idx=cont_idx,
                                           gamma=cfg.gamma,
@@ -150,7 +160,7 @@ def main(cfg: DictConfig):
         else: 
             # Apply the *same* stats to every split
             graph = normalize_zscore_pyg(
-                                        graph_list[0], 
+                                        preproc_dataset, 
                                         stats, 
                                         cont_idx=cont_idx,
                                         centroid_idx=centroid_idx,
@@ -161,10 +171,10 @@ def main(cfg: DictConfig):
     ## Add cell type as a feature and skip normalization###
     # gamma is useful only if there is a z-scoring normalization so put to 1 here 
     if not cfg.zscore_normalization and cfg.celltype_asfeature:
-        graph = append_celltype_onehot_pyg(graph_list[0], gamma=1) 
+        graph = append_celltype_onehot_pyg(preproc_dataset, gamma=1) 
 
     if not cfg.zscore_normalization and not cfg.celltype_asfeature:
-        graph = graph_list[0]
+        graph = preproc_dataset
 
 
     ### Mask the hot-encoded cell type feature if needed ###
@@ -181,6 +191,8 @@ def main(cfg: DictConfig):
     ## Now we do the transformation backward to fit with the rest of the script
     ## That take into account NCdataset object 
 
+
+
     # Create NCDataset
     dataset = NCDataset('onegraphskinwsi')
 
@@ -194,15 +206,6 @@ def main(cfg: DictConfig):
 
     # In realty graph as more attribute than newly dataset created object
 
-
-
-    #### get the splits for all runs
-    train_idx, valid_idx, test_idx = custom_fixed_split(
-            dataset.label, 
-            train_prop=cfg.train_prop, 
-            valid_prop=cfg.valid_prop, 
-            seed=cfg.seed
-    )
 
 
 

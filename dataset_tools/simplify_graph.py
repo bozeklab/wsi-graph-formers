@@ -70,18 +70,20 @@ def subgraph_filtering(data: Data, nodes_to_keep: torch.Tensor, filtering_step: 
 
 
 
-def simplify_graph(input_path: str, max_hops: int = 3) -> Data:
+def simplify_graph(input_path: str, max_hops: Optional[int] = 3) -> Data:
     """
-    Loads a PyG graph, removes background nodes (cell_type = 0) that corresponds to unclassified nodes
-    then removes nodes that are more than `max_hops` connections away from any normal and tumor epithelial 
-    (cell_type = 5 and cell_type = 6).
+    Loads a PyG graph, removes background nodes (cell_type = 0 or label = -1, 
+    i.e. unclassified nodes). If `max_hops` is specified, additionally removes
+    nodes that are more than `max_hops` connections away from any normal or tumor 
+    epithelial cell (cell_type = 5 and 6).
 
     Parameters
     ----------
     input_path : str
         Path to the saved PyG Data object (.pt file).
-    max_hops : int
+    max_hops : int or None
         Maximum allowed distance to retain nodes (in number of hops).
+        If None, only background removal is applied.
 
     Returns
     -------
@@ -91,26 +93,29 @@ def simplify_graph(input_path: str, max_hops: int = 3) -> Data:
     # Load the full graph
     graph = torch.load(input_path)
 
-    # STEP 1 — Remove all unbclassified nodes (cell_type = 0 or label == -1))
+    # STEP 1 — Remove all unclassified nodes (cell_type = 0 or label == -1)
     keep_mask = (graph['y'] != 0) & (graph['y'] != -1)
     classified_nodes = keep_mask.nonzero(as_tuple=True)[0]
 
     # Subgraph the PyG object to keep only valid nodes
     subgraph = subgraph_filtering(graph, classified_nodes, filtering_step=1)
 
+    # If max_hops is None → return after background removal
+    if max_hops is None:
+        return subgraph
+
     # STEP 2 — Convert to NetworkX for shortest path analysis
     G_nx = nx.Graph()
     edge_list = subgraph['edge_index'].t().tolist()
     G_nx.add_edges_from(edge_list)
 
-    # STEP 3 — Find all nodes within `max_hops` from any epithelial - tumor or not tumor - node  (cell_type 5 or 6)
+    # STEP 3 — Find all nodes within `max_hops` from any epithelial (5 or 6)
     target_types = {5, 6}
     anchor_nodes = [i for i, ct in enumerate(subgraph['y'].tolist()) if ct in target_types]
 
     nodes_to_keep = set()
     for node in anchor_nodes:
         if node in G_nx:
-            # Get nodes within max_hops using single-source shortest path
             neighbors = nx.single_source_shortest_path_length(G_nx, node, cutoff=max_hops)
             nodes_to_keep.update(neighbors.keys())
 
@@ -118,9 +123,8 @@ def simplify_graph(input_path: str, max_hops: int = 3) -> Data:
     nodes_close2epithelial = torch.tensor(sorted(nodes_to_keep), dtype=torch.long)
     second_subgraph = subgraph_filtering(subgraph, nodes_close2epithelial, filtering_step=2)
 
-    graph = second_subgraph
+    return second_subgraph
 
-    return graph
 
 
 

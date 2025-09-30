@@ -179,7 +179,7 @@ def main(cfg: DictConfig):
         if cfg.celltype_asfeature:
 
             ## Add cell type as a feature after normalization###
-            ## KEEP SPLITS SEPARATED
+            ## KEEP SPLITS SEPARATED )
 
             # Apply the *same* stats to every split
             train_data = [normalize_encode_celltype_pyg(

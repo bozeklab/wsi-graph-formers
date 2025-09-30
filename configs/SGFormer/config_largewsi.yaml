@@ -1,11 +1,11 @@
 # configfile.yaml
 defaults:
   - _self_
-  - experiments: SGFormer_subgraphs_100splits_no_simplification_only_mor_feat_zscoring
+  - experiments: tonameasarg
 
 ## base configs
 dataset: ""
-data_dir: ../../Data_General/TrainingSets/GraphSet/training/max_hops_tests/
+data_dir: ../../Data_General/TrainingSets/GraphSet/training/
 sub_datasetname: r50_moonly_4434-18
 model_dir: checkpoints/
 directed: False                        # set to not symmetrize adjacency
