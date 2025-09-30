@@ -140,55 +140,6 @@ def main(cfg: DictConfig):
     assert all(isinstance(g, Data) for g in graph_list), "Make sure graph_list[i] is a torch_geometric.data.Data"
 
 
-    ### Normalization of features ###
-    if cfg.zscore_normalization:
-        centroid_idx = [1,2]
-        cont_idx = [0]
-        cont_idx = cont_idx + list(range(3, graph_list[0].x.size(1)))  # all but centroid
-
-        # Fit on TRAIN graphs only
-        stats = fit_zscore_stats_pyg(graph_list, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
-
-        if cfg.celltype_asfeature:
-
-            ## Add cell type as a feature after normalization###
-
-            # Apply the *same* stats to every split
-            graph_list = [normalize_encode_celltype_pyg(
-                                          g, 
-                                          stats, 
-                                          cont_idx=cont_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None
-                                          ) for g in graph_list]
-        else: 
-            # Apply the *same* stats to every split
-            graph_list = [normalize_zscore_pyg(
-                                        g, 
-                                        stats, 
-                                        cont_idx=cont_idx,
-                                        centroid_idx=centroid_idx,
-                                        normalize_centroid=None
-                                        ) for g in graph_list]
-
-
-    ## Add cell type as a feature and skip normalization###
-    # gamma is useful only if there is a z-scoring normalization so put to 1 here 
-    if not cfg.zscore_normalization and cfg.celltype_asfeature:
-        graph_list = [append_celltype_onehot_pyg(g,gamma=1) for g in graph_list]
-
-
-    ### Mask the hot-encoded cell type feature if needed ###
-    # do it for supervised classes to avoid data leakage
-    if cfg.celltype_asfeature:
-        mask_on_graph_list(graph_list, classes=[4, 5], label_base=0)
-
-        # Sanity check 
-        print("Sanity check on split masking... ")
-        sanity_check_graph_list(graph_list, (4,5), label_base=0)
-
-
 
     ### create folds ###
     n = len(graph_list)
@@ -215,6 +166,93 @@ def main(cfg: DictConfig):
         val_data = graph_list[train_end:val_end]
         test_data = graph_list[val_end:]
 
+
+    ### Normalization of features ###
+    if cfg.zscore_normalization:
+        centroid_idx = [1,2]
+        cont_idx = [0]
+        cont_idx = cont_idx + list(range(3, data.x.size(1)))  # all but centroid
+
+        # Fit on TRAIN graphs only
+        stats = fit_zscore_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
+
+        if cfg.celltype_asfeature:
+
+            ## Add cell type as a feature after normalization###
+            ## KEEP SPLITS SEPARATED
+
+            # Apply the *same* stats to every split
+            train_data = [normalize_encode_celltype_pyg(
+                                          g, 
+                                          stats, 
+                                          cont_idx=cont_idx,
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None
+                                          ) for g in train_data]
+            val_data = [normalize_encode_celltype_pyg(
+                                          g, 
+                                          stats, 
+                                          cont_idx=cont_idx,
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None
+                                          ) for g in val_data]
+            test_data = [normalize_encode_celltype_pyg(
+                                          g, 
+                                          stats, 
+                                          cont_idx=cont_idx,
+                                          gamma=cfg.gamma,
+                                          centroid_idx=centroid_idx,
+                                          normalize_centroid=None
+                                          ) for g in test_data]
+        else: 
+            # Apply the *same* stats to every split
+            train_data = [normalize_zscore_pyg(
+                                        g, 
+                                        stats, 
+                                        cont_idx=cont_idx,
+                                        centroid_idx=centroid_idx,
+                                        normalize_centroid=None
+                                        ) for g in train_data]
+            val_data   = [normalize_zscore_pyg(
+                                        g, 
+                                        stats, 
+                                        cont_idx=cont_idx,
+                                        centroid_idx=centroid_idx,
+                                        normalize_centroid=None
+                                        ) for g in val_data]
+            test_data  = [normalize_zscore_pyg(
+                                        g, 
+                                        stats, 
+                                        cont_idx=cont_idx,
+                                        centroid_idx=centroid_idx,
+                                        normalize_centroid=None
+                                        ) for g in test_data]
+
+
+    ## Add cell type as a feature and skip normalization###
+    # gamma is useful only if there is a z-scoring normalization so put to 1 here 
+    if not cfg.zscore_normalization and cfg.celltype_asfeature:
+        train_data = [append_celltype_onehot_pyg(g,gamma=1) for g in train_data]
+        val_data = [append_celltype_onehot_pyg(g,gamma=1) for g in val_data]
+        test_data = [append_celltype_onehot_pyg(g,gamma=1) for g in test_data]
+
+
+    ### Mask the hot-encoded cell type feature if needed ###
+    # do it for supervised classes to avoid data leakage
+    if cfg.celltype_asfeature:
+        mask_on_graph_list(train_data, classes=[4, 5], label_base=0)
+        mask_on_graph_list(val_data, classes=[4, 5], label_base=0)
+        mask_on_graph_list(test_data, classes=[4, 5], label_base=0)
+
+        # Sanity check 
+        print("Sanity check on train split masking... ")
+        sanity_check_graph_list(train_data, (4,5), label_base=0)
+        print("Sanity check on val split masking... ")
+        sanity_check_graph_list(val_data,   (4,5), label_base=0)
+        print("Sanity check on test split masking... ")
+        sanity_check_graph_list(test_data,  (4,5), label_base=0)
 
 
     ### dataloader and batching ###

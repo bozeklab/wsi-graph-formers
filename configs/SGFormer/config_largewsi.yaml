@@ -5,7 +5,7 @@ defaults:
 
 ## base configs
 dataset: ""
-data_dir: ../../Data_General/TrainingSets/GraphSet/training/
+data_dir: ../../Data_General/TrainingSets/GraphSet/training/max_hops_tests/
 sub_datasetname: r50_moonly_4434-18
 model_dir: checkpoints/
 directed: False                        # set to not symmetrize adjacency
