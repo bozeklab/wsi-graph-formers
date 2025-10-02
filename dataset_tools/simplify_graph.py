@@ -12,6 +12,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import subgraph
 import networkx as nx
+from typing import Optional
 
 from omegaconf import DictConfig
 import hydra
@@ -81,9 +82,9 @@ def simplify_graph(input_path: str, max_hops: Optional[int] = 3) -> Data:
     ----------
     input_path : str
         Path to the saved PyG Data object (.pt file).
-    max_hops : int or None
+    max_hops : int or "Inf"
         Maximum allowed distance to retain nodes (in number of hops).
-        If None, only background removal is applied.
+        If "Inf", only background removal is applied.
 
     Returns
     -------
@@ -101,29 +102,30 @@ def simplify_graph(input_path: str, max_hops: Optional[int] = 3) -> Data:
     subgraph = subgraph_filtering(graph, classified_nodes, filtering_step=1)
 
     # If max_hops is None → return after background removal
-    if max_hops is None:
+    if str(max_hops) is "Inf":
         return subgraph
 
-    # STEP 2 — Convert to NetworkX for shortest path analysis
-    G_nx = nx.Graph()
-    edge_list = subgraph['edge_index'].t().tolist()
-    G_nx.add_edges_from(edge_list)
+    else:
+        # STEP 2 — Convert to NetworkX for shortest path analysis
+        G_nx = nx.Graph()
+        edge_list = subgraph['edge_index'].t().tolist()
+        G_nx.add_edges_from(edge_list)
 
-    # STEP 3 — Find all nodes within `max_hops` from any epithelial (5 or 6)
-    target_types = {5, 6}
-    anchor_nodes = [i for i, ct in enumerate(subgraph['y'].tolist()) if ct in target_types]
+        # STEP 3 — Find all nodes within `max_hops` from any epithelial (5 or 6)
+        target_types = {5, 6}
+        anchor_nodes = [i for i, ct in enumerate(subgraph['y'].tolist()) if ct in target_types]
 
-    nodes_to_keep = set()
-    for node in anchor_nodes:
-        if node in G_nx:
-            neighbors = nx.single_source_shortest_path_length(G_nx, node, cutoff=max_hops)
-            nodes_to_keep.update(neighbors.keys())
+        nodes_to_keep = set()
+        for node in anchor_nodes:
+            if node in G_nx:
+                neighbors = nx.single_source_shortest_path_length(G_nx, node, cutoff=max_hops)
+                nodes_to_keep.update(neighbors.keys())
 
-    # STEP 4 — Final subgraph with only close-enough nodes
-    nodes_close2epithelial = torch.tensor(sorted(nodes_to_keep), dtype=torch.long)
-    second_subgraph = subgraph_filtering(subgraph, nodes_close2epithelial, filtering_step=2)
+        # STEP 4 — Final subgraph with only close-enough nodes
+        nodes_close2epithelial = torch.tensor(sorted(nodes_to_keep), dtype=torch.long)
+        second_subgraph = subgraph_filtering(subgraph, nodes_close2epithelial, filtering_step=2)
 
-    return second_subgraph
+        return second_subgraph
 
 
 

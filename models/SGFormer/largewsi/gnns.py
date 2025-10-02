@@ -688,3 +688,233 @@ class GPRGNN(nn.Module):
             x = self.prop1(x, edge_index)
             return x
 
+
+
+
+class GCN_bin(nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2,
+                 dropout=0.5, save_mem=True, use_bn=True):
+        super().__init__()
+        self.convs = nn.ModuleList()
+        self.convs.append(GCNConv(in_channels, hidden_channels, cached=not save_mem, normalize=not save_mem))
+        self.bns = nn.ModuleList()
+        self.bns.append(nn.BatchNorm1d(hidden_channels))
+        for _ in range(num_layers - 2):
+            self.convs.append(GCNConv(hidden_channels, hidden_channels, cached=not save_mem, normalize=not save_mem))
+            self.bns.append(nn.BatchNorm1d(hidden_channels))
+        self.convs.append(GCNConv(hidden_channels, 1, cached=not save_mem, normalize=not save_mem))  # <- 1
+        self.dropout = dropout
+        self.activation = F.relu
+        self.use_bn = use_bn
+
+    def reset_parameters(self):
+        for c in self.convs: c.reset_parameters()
+        for b in self.bns: b.reset_parameters()
+
+    def forward(self, x, edge_index):
+        for i, conv in enumerate(self.convs[:-1]):
+            x = conv(x, edge_index)
+            if self.use_bn: x = self.bns[i](x)
+            x = self.activation(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        return self.convs[-1](x, edge_index)
+
+
+class GAT_bin(nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2,
+                 dropout=0.5, use_bn=False, heads=2, out_heads=1):
+        super().__init__()
+        self.convs = nn.ModuleList()
+        self.convs.append(GATConv(in_channels, hidden_channels, dropout=dropout, heads=heads, concat=True))
+        self.bns = nn.ModuleList()
+        self.bns.append(nn.BatchNorm1d(hidden_channels*heads))
+        for _ in range(num_layers - 2):
+            self.convs.append(GATConv(hidden_channels*heads, hidden_channels, dropout=dropout, heads=heads, concat=True))
+            self.bns.append(nn.BatchNorm1d(hidden_channels*heads))
+        self.convs.append(GATConv(hidden_channels*heads, 1, dropout=dropout, heads=out_heads, concat=False))  # <- 1
+        self.dropout = dropout
+        self.activation = F.elu
+        self.use_bn = use_bn
+
+    def reset_parameters(self):
+        for c in self.convs: c.reset_parameters()
+        for b in self.bns: b.reset_parameters()
+
+    def forward(self, x, edge_index):
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        for i, conv in enumerate(self.convs[:-1]):
+            x = conv(x, edge_index)
+            if self.use_bn: x = self.bns[i](x)
+            x = self.activation(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        return self.convs[-1](x, edge_index)
+
+
+class SGCMem_bin(nn.Module):
+    def __init__(self, in_channels, out_channels, hops, use_bn=False):
+        super().__init__()
+        self.lin = nn.Linear(in_channels, 1)  # <- 1
+        self.hops = hops
+        self.use_bn = use_bn
+        if use_bn:
+            self.bn = nn.BatchNorm1d(in_channels)
+
+    def reset_parameters(self):
+        self.lin.reset_parameters()
+        if self.use_bn: self.bn.reset_parameters()
+
+    def forward(self, x, edge_index):
+        n = x.shape[0]
+        edge_weight = None
+        if isinstance(edge_index, torch.Tensor):
+            edge_index, edge_weight = gcn_norm(edge_index, edge_weight, n, False, dtype=x.dtype)
+            row, col = edge_index
+            adj_t = SparseTensor(row=col, col=row, value=edge_weight, sparse_sizes=(n, n))
+        elif isinstance(edge_index, SparseTensor):
+            edge_index = gcn_norm(edge_index, edge_weight, n, False, dtype=x.dtype)
+            adj_t = edge_index
+        if self.use_bn:
+            x = self.bn(x)
+        for _ in range(self.hops):
+            x = matmul(adj_t, x)
+        return self.lin(x)
+
+
+class SGC2_bin(nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, hops, num_layers, dropout, use_bn=False):
+        super().__init__()
+        self.lins = nn.ModuleList([nn.Linear(in_channels, hidden_channels)])
+        self.bns = nn.ModuleList([nn.BatchNorm1d(hidden_channels)])
+        for _ in range(num_layers - 2):
+            self.lins.append(nn.Linear(hidden_channels, hidden_channels))
+            self.bns.append(nn.BatchNorm1d(hidden_channels))
+        self.lins.append(nn.Linear(hidden_channels, 1))  # <- 1
+        self.hops = hops
+        self.dropout = dropout
+        self.use_bn = use_bn
+
+    def reset_parameters(self):
+        for lin in self.lins: lin.reset_parameters()
+        for bn in self.bns: bn.reset_parameters()
+
+    def forward(self, x, edge_index):
+        n = x.shape[0]
+        edge_weight = None
+        edge_index, edge_weight = gcn_norm(edge_index, edge_weight, n, False, dtype=x.dtype)
+        row, col = edge_index
+        adj_t = SparseTensor(row=col, col=row, value=edge_weight, sparse_sizes=(n, n))
+        for _ in range(self.hops):
+            x = matmul(adj_t, x)
+        for i, lin in enumerate(self.lins[:-1]):
+            x = lin(x)
+            if self.use_bn: x = self.bns[i](x)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        return self.lins[-1](x)
+
+
+class SIGN_bin(nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, hops, num_layers, dropout, use_bn=False):
+        super().__init__()
+        self.lins = nn.ModuleList([nn.Linear(in_channels*(hops+1), hidden_channels)])
+        self.bns = nn.ModuleList([nn.BatchNorm1d(hidden_channels)])
+        for _ in range(num_layers - 2):
+            self.lins.append(nn.Linear(hidden_channels, hidden_channels))
+            self.bns.append(nn.BatchNorm1d(hidden_channels))
+        self.lins.append(nn.Linear(hidden_channels, 1))  # <- 1
+        self.dropout = dropout
+        self.num_layers = num_layers
+        self.hops = hops
+        self.use_bn = use_bn
+
+    def reset_parameters(self):
+        for lin in self.lins: lin.reset_parameters()
+        for bn in self.bns: bn.reset_parameters()
+
+    def forward(self, x, edge_index):
+        N = x.shape[0]
+        row, col = edge_index
+        d = degree(col, N).float()
+        d_norm_in = (1. / d[col]).sqrt()
+        d_norm_out = (1. / d[row]).sqrt()
+        value = torch.ones_like(row) * d_norm_in * d_norm_out
+        value = torch.nan_to_num(value, nan=0.0, posinf=0.0, neginf=0.0)
+        adj = SparseTensor(row=col, col=row, value=value, sparse_sizes=(N, N))
+
+        feats = [x]
+        xk = x
+        for _ in range(self.hops):
+            xk = torch_sparse.matmul(adj, xk)
+            feats.append(xk)
+        x = torch.cat(feats, dim=1)
+
+        for i, lin in enumerate(self.lins[:-1]):
+            x = lin(x)
+            if self.use_bn: x = self.bns[i](x)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        return self.lins[-1](x)
+
+
+
+class GCNJK_bin(nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2,
+                 dropout=0.5, save_mem=False, jk_type='max'):
+        super().__init__()
+
+        self.convs = nn.ModuleList()
+        self.convs.append(
+            GCNConv(in_channels, hidden_channels, cached=not save_mem, normalize=not save_mem)
+        )
+
+        self.bns = nn.ModuleList()
+        self.bns.append(nn.BatchNorm1d(hidden_channels))
+        for _ in range(num_layers - 2):
+            self.convs.append(
+                GCNConv(hidden_channels, hidden_channels, cached=not save_mem, normalize=not save_mem)
+            )
+            self.bns.append(nn.BatchNorm1d(hidden_channels))
+
+        # last hidden layer (kept as hidden_channels like your original)
+        self.convs.append(
+            GCNConv(hidden_channels, hidden_channels, cached=not save_mem, normalize=not save_mem)
+        )
+
+        self.dropout = dropout
+        self.activation = F.relu
+
+        # mirror your original JK setup
+        self.jump = JumpingKnowledge(jk_type, channels=hidden_channels, num_layers=1)
+
+        # binary head -> single logit
+        if jk_type == 'cat':
+            self.final_project = nn.Linear(hidden_channels * num_layers, 1)
+        else:  # 'max' or 'lstm'
+            self.final_project = nn.Linear(hidden_channels, 1)
+
+    def reset_parameters(self):
+        for conv in self.convs:
+            conv.reset_parameters()
+        for bn in self.bns:
+            bn.reset_parameters()
+        self.jump.reset_parameters()
+        self.final_project.reset_parameters()
+
+    def forward(self, x, edge_index):
+        xs = []
+        for i, conv in enumerate(self.convs[:-1]):
+            x = conv(x, edge_index)
+            x = self.bns[i](x)
+            x = self.activation(x)
+            xs.append(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.convs[-1](x, edge_index)
+        xs.append(x)
+
+        x = self.jump(xs)
+        x = self.final_project(x)   # shape: [N, 1] logit
+        return x
+
+
+
+

@@ -10,8 +10,22 @@ def parse_method(cfg, c: int, d: int, device: torch.device):
                     num_layers=cfg.num_layers,
                     dropout=cfg.dropout,
                     use_bn=cfg.use_bn).to(device)
+    if cfg.method == 'gcnbin':
+        model = GCN_bin(in_channels=d,
+                    hidden_channels=cfg.hidden_channels,
+                    out_channels=c,
+                    num_layers=cfg.num_layers,
+                    dropout=cfg.dropout,
+                    use_bn=cfg.use_bn).to(device)
     elif cfg.method == 'gat':
         model = GAT(d, cfg.hidden_channels, c,
+                    num_layers=cfg.num_layers,
+                    dropout=cfg.dropout,
+                    use_bn=cfg.use_bn,
+                    heads=cfg.gat_heads,
+                    out_heads=cfg.out_heads).to(device)
+    elif cfg.method == 'gatbin':
+        model = GAT_bin(d, cfg.hidden_channels, c,
                     num_layers=cfg.num_layers,
                     dropout=cfg.dropout,
                     use_bn=cfg.use_bn,
@@ -35,12 +49,29 @@ def parse_method(cfg, c: int, d: int, device: torch.device):
                        out_channels=c,
                        hops=cfg.hops,
                        use_bn=cfg.use_bn).to(device)
+    elif cfg.method == 'sgcbin':
+        model = SGCMem_bin(in_channels=d,
+                       out_channels=c,
+                       hops=cfg.hops,
+                       use_bn=cfg.use_bn).to(device)
     elif cfg.method == 'sgc2':
         model = SGC2(d, cfg.hidden_channels, c,
                      cfg.hops, cfg.num_layers,
                      cfg.dropout, use_bn=cfg.use_bn).to(device)
+    elif cfg.method == 'sgc2bin':
+        model = SGC2_bin(d, cfg.hidden_channels, c,
+                     cfg.hops, cfg.num_layers,
+                     cfg.dropout, use_bn=cfg.use_bn).to(device)
     elif cfg.method == 'sign':
         model = SIGN(in_channels=d,
+                     hidden_channels=cfg.hidden_channels,
+                     out_channels=c,
+                     hops=cfg.hops,
+                     num_layers=cfg.num_layers,
+                     dropout=cfg.dropout,
+                     use_bn=cfg.use_bn).to(device)
+    elif cfg.method == 'signbin':
+        model = SIGN_bin(in_channels=d,
                      hidden_channels=cfg.hidden_channels,
                      out_channels=c,
                      hops=cfg.hops,
@@ -90,6 +121,8 @@ def parse_method(cfg, c: int, d: int, device: torch.device):
     else:
         raise ValueError(f"Invalid method: {cfg.method}")
     return model
+
+
 
 
 
