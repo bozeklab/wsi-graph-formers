@@ -1,5 +1,7 @@
 from models.SGFormer.largewsi.gnns import *
-from models.SGFormer.largewsi.ours import *
+from models.SGFormer.largewsi.sgformer import *
+from models.SGFormer.largewsi.nodeformer import *
+from models.SGFormer.largewsi.difformer import * 
 
 
 def parse_method(cfg, c: int, d: int, device: torch.device):
@@ -117,6 +119,46 @@ def parse_method(cfg, c: int, d: int, device: torch.device):
             gnn_use_weight=cfg.gnn_use_weight,
             gnn_use_init=cfg.gnn_use_init,
             gnn_use_act=cfg.gnn_use_act,
+        ).to(device)
+    elif cfg.method == 'nodeformer':
+        model = NodeFormer(
+            in_channels=d,
+            hidden_channels=cfg.hidden_channels,
+            out_channels=c,
+            num_layers=cfg.num_layers,
+            dropout=cfg.dropout,
+            num_heads=cfg.num_heads,
+            use_bn=cfg.use_bn
+        ).to(device)
+    elif cfg.method == 'nodeformerbin':
+        model = NodeFormer_bin(
+            in_channels=d,
+            hidden_channels=cfg.hidden_channels,
+            out_channels=c,
+            num_layers=cfg.num_layers,
+            dropout=cfg.dropout,
+            num_heads=cfg.num_heads,
+            use_bn=cfg.use_bn
+        ).to(device)
+    elif cfg.method == 'difformer':
+        model = DIFFormer(
+            in_channels=d,
+            hidden_channels=cfg.hidden_channels,
+            out_channels=c,
+            num_layers=cfg.num_layers,
+            alpha=cfg.alpha,
+            dropout=cfg.dropout,
+            num_heads=cfg.num_heads
+        ).to(device)
+    elif cfg.method == 'difformerbin':
+        model = DIFFormer_bin(
+            in_channels=d,
+            hidden_channels=cfg.hidden_channels,
+            out_channels=c,
+            num_layers=cfg.num_layers,
+            alpha=cfg.alpha,
+            dropout=cfg.dropout,
+            num_heads=cfg.num_heads
         ).to(device)
     else:
         raise ValueError(f"Invalid method: {cfg.method}")
