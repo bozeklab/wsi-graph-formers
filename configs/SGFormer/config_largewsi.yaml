@@ -74,6 +74,7 @@ num_heads: 1                           # number of heads for attention
 alpha: 0.5                             # weight for residual link
 use_bn : False                         # use layernorm
 use_residual: False                    # use residual link for each GNN layer
+use_act: False                         # use non-linearity for each layer
 
 # other model settings
 hops: 2                                # number of hops for SGC
@@ -106,6 +107,14 @@ trans_weight_decay: 0.001
 graph_weight: 0.8                      # graph weight  
 aggregate: add                         # aggregate type, add or cat.
 use_graph: True                        # use input graph   
+
+## NodeFormer settings
+lamda: 0.1                             # weight for edge reg loss
+nb_random_features: 50                 # Random Features for Large-Scale Kernel Machines, see nodeformer paper method, here default value for large graphs
+nb_gumbel_sample: 5                    # Gumbel softmax, see nodeformer paper method,  here default value for large graphs
+rb_order: 1                            # order for relational bias, 0 for not use, here default value for large graph
+rb_trans: identity                     # non-linearity for relational bias, here default value for large graph
+use_jk: True                           # concat the layer-wise results in the final layer, here default value for large graph
 
 
 ## display

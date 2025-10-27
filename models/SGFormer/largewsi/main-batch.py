@@ -381,7 +381,13 @@ def main(cfg: DictConfig):
                 data = data.to(device)          # moves x, edge_index, y, etc.
                 optimizer.zero_grad()     
 
-                out = model(data.x, data.edge_index)
+                if cfg.method ==  'nodeformerbin':
+                    out, link_loss_ = model(data.x, data.edge_index)
+                    # link_loss_ is typically a list/tuple of per-layer link log-likelihood terms
+                    link_reg = sum(link_loss_) / len(link_loss_)
+                else:
+                    out = model(data.x, data.edge_index)
+
 
                 if cfg.trainingtask == "binnodeclass_mask":
 
@@ -400,14 +406,24 @@ def main(cfg: DictConfig):
                         mask_45 = (y == 4) | (y == 5)
 
                         if not mask_45.any():
-                            continue  # no eligible nodes in this batch
+                            # no eligible nodes in this batch
+                            # but we can still train structure with link regularizer only
+                            if cfg.method ==  'nodeformerbin':
+                                loss = - cfg.lamda * link_reg
+                                loss.backward()
+                                optimizer.step()
+                            continue  
 
                         y_bin = (y == 5).float()          # 5 -> 1, 4 -> 0
+
                         loss = criterion(logits[mask_45], y_bin[mask_45])  # BCEWithLogitsLoss
 
                         # The logic is quite different than for main.py, both because now we are working with batches
                         # and because we are working with the train loader instances instead of graph dictionnaries 
 
+                        if cfg.method ==  'nodeformerbin':
+                            # we update the loss with he regularization term
+                            loss = loss - cfg.lamda * link_reg
 
                     else:
 

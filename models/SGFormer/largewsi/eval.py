@@ -13,8 +13,14 @@ def evaluate(model, dataset, split_idx, eval_func, criterion, cfg, result=None):
         out = result
     else:
         model.eval()
-        out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+        try:
+            # Some models (like NodeFormer) return (out, link_loss_)
+            out,_ = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+        except ValueError:
+            # for most of the models:
+            out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
 
+        
     train_metric = eval_func(
         dataset.label[split_idx['train']], 
         out[split_idx['train']]
@@ -81,7 +87,12 @@ def evaluate_wloader(model,
         # if cfg.celltype_asfeature:
         #     mask_celltype_onehot_cols(batch, classes=[4, 5], label_base=0)
 
-        out = model(batch.x, batch.edge_index)
+        try:
+            # Some models (like NodeFormer) return (out, link_loss_)
+            logits, _ = model(batch.x, batch.edge_index)
+        except ValueError:
+            # for most of the models:
+            logits = model(batch.x, batch.edge_index)
 
         out = F.log_softmax(out, dim=1)
        
@@ -123,7 +134,12 @@ def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg,
         out = result
     else:
         model.eval()
-        out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+        try:
+            # Some models (like NodeFormer) return (out, link_loss_)
+            out,_ = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+        except ValueError:
+            # for most of the models:
+            out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
 
     out = out.squeeze(1)
 
@@ -186,9 +202,14 @@ def evaluate_binmasked_wloader(model,
 
         # if cfg.celltype_asfeature:
         #     mask_celltype_onehot_cols(batch, classes=[4, 5], label_base=0)
-        
-        logits = model(batch.x, batch.edge_index)
+        try:
+            # Some models (like NodeFormer) return (out, link_loss_)
+            logits, _ = model(batch.x, batch.edge_index)
+        except ValueError:
+            # for most of the models:
+            logits = model(batch.x, batch.edge_index)
 
+        
         # ensure shape [N]
         if logits.dim() == 2 and logits.size(1) == 1:
             logits = logits.squeeze(1)

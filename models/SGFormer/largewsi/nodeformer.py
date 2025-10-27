@@ -443,17 +443,19 @@ class NodeFormer_bin(nn.Module):
         for fc in self.fcs:
             fc.reset_parameters()
 
-    def forward(self, data, tau=1.0):
-        n = data.graph['num_nodes']
+    def forward(self, x, edge_index, tau=1.0):
+        # n = data.graph['num_nodes']
+        n = x.shape[0]
         adjs = []
-        adj, _ = remove_self_loops(data.graph['edge_index'])
+        # adj, _ = remove_self_loops(data.graph['edge_index'])
+        adj, _ = remove_self_loops(edge_index)        
         adj, _ = add_self_loops(adj, num_nodes=n)
         adjs.append(adj)
         for i in range(2 - 1):  # edge_index of high order adjacency # args.rb_order == 2
             adj = adj_mul(adj, adj, n)
             adjs.append(adj)
 
-        x = data.graph['node_feat']
+        # x = data.graph['node_feat']
         x = x.unsqueeze(0)  # [B, N, D], B=1 denotes number of graph
         layer_ = []
         link_loss_ = []
