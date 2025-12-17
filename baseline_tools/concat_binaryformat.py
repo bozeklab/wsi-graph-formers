@@ -197,6 +197,7 @@ def write_fold(
     C_img: int,
     mask_key: str,
     stats_per_fold: Dict[str, Dict[str, int]],
+    ratio_threshold: float,
     *,
     export_onehot: bool = True,
     out_channels: int = 6,
@@ -228,7 +229,7 @@ def write_fold(
         if type_map.shape != (H, W):
             continue
 
-        keep, c5, c6, _ = tile_passes_ratio(type_map, threshold=RATIO_THRESHOLD_GLOBAL)
+        keep, c5, c6, _ = tile_passes_ratio(type_map, threshold=ratio_threshold)
         if not keep:
             continue
 
@@ -319,11 +320,11 @@ def write_fold(
 
 
 # Global so helpers see the threshold
-RATIO_THRESHOLD_GLOBAL: float = 0.9
+# RATIO_THRESHOLD_GLOBAL: float = 0.9
 
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
-    global RATIO_THRESHOLD_GLOBAL
+    # global RATIO_THRESHOLD_GLOBAL
 
     # Resolve against the original cwd (stable across Hydra run dirs)
     tiles_dir = Path(to_absolute_path(str(cfg.concat.tiles_dir)))
@@ -406,7 +407,7 @@ def main(cfg: DictConfig):
         print(f"[INFO] Writing {fold_name(fi)} with {len(stems_i)} tiles …")
         write_fold(
             fi, stems_i, pair_map, out_root, H, W, C_img, mask_key,
-            stats_per_fold=stats_all
+            stats_per_fold=stats_all, ratio_threshold=RATIO_THRESHOLD_GLOBAL
         )
         print(f"[OK] {fold_name(fi)} saved to {out_root / fold_name(fi)}")
 
