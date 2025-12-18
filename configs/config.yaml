@@ -52,7 +52,7 @@ figsize: [10, 10]
 
 
 baselinedata_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-4434-18/CellViT_binaryformat"
+4434-18/CellViT_binaryformat_nothreshold"
 
 # wsijson_to_trainset.py 
 json_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
@@ -71,7 +71,7 @@ concat:
   tiles_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
   4434-18/4434-18" 
   out_root: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  4434-18/CellViT_binaryformat"   
+  4434-18/folds_binaryformat_nothreshold"   
   folds: 3
   seed: 1337
   mask_key: type_map
@@ -80,7 +80,7 @@ concat:
   export_onehot_for_cellvit: True 
   # for binary format
   channel_map: {1: 4, 2: 5}
-  ratio_threshold: 0.9  
+  ratio_threshold: 0
   stratify_by_major: True
   # for 6 classes format 
   stratify: False
@@ -93,12 +93,12 @@ hvn_format:
   tiles_root: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
   4434-18/4434-18"  
   hvn_format_output: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  4434-18/hovernet_binaryformat"
+  4434-18/hovernet_binaryformat_nothreshold"
   folds: 3
   seed: 1337
   packed_dtype: int32
   # for binary format
-  ratio_threshold: 0.9  
+  ratio_threshold: 0 
   stratify_by_major: True
 
 

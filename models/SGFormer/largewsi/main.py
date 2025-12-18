@@ -112,7 +112,7 @@ def main(cfg: DictConfig):
 
 
 
-    ### Convert split list (graphs) Ò into a list of torch_geometric.data.Data objects:
+    ### Convert split list (graphs) into a list of torch_geometric.data.Data objects:
     # converted = []
     # for g in split_list:
     if isinstance(preproc_dataset, Data):

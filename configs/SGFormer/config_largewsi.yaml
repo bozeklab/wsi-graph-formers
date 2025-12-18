@@ -27,7 +27,7 @@ epochs: 500
 fixed_init: True                       # wether or not to have a fixed initialization
 runs: 1                                # number of distinct runs
 train_prop: 0.66                       # training label proportion
-valid_prop: 0.165                      # validation label proportion 
+valid_prop: 0.33                       # validation label proportion 
 lr: 0.01
 batch_size: 10000                      # mini batch training for large graphs
 patience: 200                          # early stopping patience

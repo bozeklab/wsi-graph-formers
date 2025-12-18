@@ -229,9 +229,10 @@ def write_fold(
         if type_map.shape != (H, W):
             continue
 
-        keep, c5, c6, _ = tile_passes_ratio(type_map, threshold=ratio_threshold)
-        if not keep:
-            continue
+        if ratio_threshold > 0:
+            keep, c5, c6, _ = tile_passes_ratio(type_map, threshold=ratio_threshold)
+            if not keep:
+                continue
 
         # cell counts via inst_map (ignore if missing)
         try:

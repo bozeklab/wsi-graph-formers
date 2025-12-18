@@ -231,16 +231,20 @@ def export_fold(
             skipped += 1
             continue
 
-        # inclusion rule (again, for safety; should already be filtered)
-        keep, _, _, _ = tile_passes_ratio(type_map, ratio_threshold)
-        if not keep:
+        # Ratio gate only when threshold > 0
+        if ratio_threshold > 0:
+            keep, _, _, _ = tile_passes_ratio(type_map, ratio_threshold)
+            if not keep:
+                skipped += 1
+                continue
+
+        inst_new, type_new = filter_and_remap(inst_map, type_map)
+
+        # Only enforce "must have 5/6 instances" when threshold > 0
+        if ratio_threshold > 0 and inst_new.max() == 0:
             skipped += 1
             continue
 
-        inst_new, type_new = filter_and_remap(inst_map, type_map)
-        if inst_new.max() == 0:
-            skipped += 1
-            continue
 
         # count instances per class (type_new is {0,1,2})
         ids1 = np.unique(inst_new[(type_new == 1) & (inst_new > 0)])
