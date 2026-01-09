@@ -227,6 +227,98 @@ def custom_fixed_split(label, train_prop=0.5, valid_prop=0.25, seed=42, per_clas
     )
 
 
+#UNTESTED!
+def custom_cv_split(label, k_folds=5, fold=0, seed=42):
+    """
+    Returns train/valid/test indices for a given CV fold.
+    - test fold = `fold`
+    - valid fold = (fold + 1) % k_folds
+    - train = remaining folds
+    If per_class=True, folds are created per class (stratified-ish).
+    """
+    rng = np.random.RandomState(int(seed))
+    label = label.squeeze().cpu().numpy()
+    n = len(label)
+
+    def make_folds_from_indices(indices, k):
+        indices = np.array(indices, dtype=int)
+        rng.shuffle(indices)
+        # split into k nearly-equal chunks
+        return np.array_split(indices, k)
+
+    idx = np.arange(n)
+    folds = make_folds_from_indices(idx, k_folds)
+
+    if not (0 <= fold < k_folds):
+        raise ValueError(f"`fold` must be in [0, {k_folds-1}], got {fold}")
+
+    test_idx = np.array(folds[fold], dtype=int)
+    valid_fold = (fold + 1) % k_folds
+    valid_idx = np.array(folds[valid_fold], dtype=int)
+
+    train_folds = [i for i in range(k_folds) if i not in (fold, valid_fold)]
+    train_idx = np.concatenate([np.array(folds[i], dtype=int) for i in train_folds], axis=0)
+
+    return (
+        torch.tensor(train_idx, dtype=torch.long),
+        torch.tensor(valid_idx, dtype=torch.long),
+        torch.tensor(test_idx, dtype=torch.long),
+    )
+
+
+
+
+
+def custom_cv_split_train_test(
+    label,
+    k_folds=5,
+    testfold=0,
+    seed=42,
+):
+    """
+    K-fold cross-validation split (train / test only).
+
+    - test_idx  = fold
+    - train_idx = all other folds
+    """
+    rng = np.random.RandomState(int(seed))
+    label = label.squeeze().cpu().numpy()
+    n = len(label)
+
+    def make_folds(indices, k):
+        indices = np.array(indices, dtype=int)
+        rng.shuffle(indices)
+        return np.array_split(indices, k)
+
+
+    idx = np.arange(n)
+    folds = make_folds(idx, k_folds)
+
+    if not (0 <= testfold < k_folds):
+        raise ValueError(f"`fold` must be in [0, {k_folds - 1}]")
+
+    test_idx = np.array(folds[testfold], dtype=int)
+
+    train_folds = [i for i in range(k_folds) if i != testfold]
+    train_idx = np.concatenate(
+        [np.array(folds[i], dtype=int) for i in train_folds],
+        axis=0,
+    )
+
+    return (
+        torch.tensor(train_idx, dtype=torch.long),
+        torch.tensor(test_idx, dtype=torch.long),
+    )
+
+
+
+
+
+
+
+
+
+
 
 
 def load_skinwsi_onegraphdataset(data_dir, 

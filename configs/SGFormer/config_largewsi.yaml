@@ -63,8 +63,10 @@ pred_output_dir: predictions/
 pred_output_name: graph_r50_4539-14_simplified_3-hops-ngbr 
 
 
-
-
+## cross-validation
+cv: False                              # create split for cross validation
+k_folds: 3                             # number of folds for cv
+# testfold: 0                          # id of the test fold
 
 ## model settings
 # general
@@ -107,6 +109,7 @@ trans_weight_decay: 0.001
 graph_weight: 0.8                      # graph weight  
 aggregate: add                         # aggregate type, add or cat.
 use_graph: True                        # use input graph   
+
 
 ## NodeFormer settings
 lamda: 0.1                             # weight for edge reg loss

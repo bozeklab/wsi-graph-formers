@@ -140,413 +140,454 @@ def main(cfg: DictConfig):
     assert all(isinstance(g, Data) for g in graph_list), "Make sure graph_list[i] is a torch_geometric.data.Data"
 
 
-
     ### create folds ###
-    n = len(graph_list)
+    def cv_train_test_indices(n, k_folds=5, testfold=0, seed=42):
+        # used only if cv is True
+        rng = np.random.RandomState(int(seed))
+        idx = np.arange(n)
+        rng.shuffle(idx)
+        folds = np.array_split(idx, k_folds)
 
-    if cfg.dataset == 'skinwsi':
-        # Calculate split indices
-        train_end = int(cfg.train_prop * n)
-        val_end = int(cfg.train_prop * n + cfg.valid_prop * n)
+        if not (0 <= testfold < k_folds):
+            raise ValueError(f"`fold` must be in [0, {k_folds-1}], got {testfold}")
 
-        train_data = graph_list[:train_end]
-        val_data = graph_list[train_end:val_end]
-        test_data = graph_list[val_end:]
-
-    if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
-        # we want the subgraph to be randomly spread in the training set 
-        random.shuffle(graph_list)
-        # the shuffle follow the defined seeds above
-
-        # Calculate split indices
-        train_end = int(cfg.train_prop * n)
-        val_end = int(cfg.train_prop * n + cfg.valid_prop * n)
-
-        train_data = graph_list[:train_end]
-        val_data = graph_list[train_end:val_end]
-        test_data = graph_list[val_end:]
+        test_idx = folds[testfold]
+        train_idx = np.concatenate([folds[i] for i in range(k_folds) if i != testfold])
+        return train_idx, test_idx
 
 
-    ### Normalization of features ###
-    if cfg.zscore_normalization:
-        centroid_idx = [1,2]
-        cont_idx = [0]
-        cont_idx = cont_idx + list(range(3, data.x.size(1)))  # all but centroid
+    # create limit index for the loop
+    if cfg.cv:
+        l = cfg.k_folds
+    else:
+        l= 1
 
-        # Fit on TRAIN graphs only
-        stats = fit_zscore_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
 
-        if cfg.celltype_asfeature:
+    # we plan a loop for cv, but if not cv there will be only one run
+    for testfold_idx in range(0,l):
 
-            ## Add cell type as a feature after normalization###
-            ## KEEP SPLITS SEPARATED )
+        n = len(graph_list)
 
-            # Apply the *same* stats to every split
-            train_data = [normalize_encode_celltype_pyg(
-                                          g, 
-                                          stats, 
-                                          cont_idx=cont_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None
-                                          ) for g in train_data]
-            val_data = [normalize_encode_celltype_pyg(
-                                          g, 
-                                          stats, 
-                                          cont_idx=cont_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None
-                                          ) for g in val_data]
-            test_data = [normalize_encode_celltype_pyg(
-                                          g, 
-                                          stats, 
-                                          cont_idx=cont_idx,
-                                          gamma=cfg.gamma,
-                                          centroid_idx=centroid_idx,
-                                          normalize_centroid=None
-                                          ) for g in test_data]
+        if cfg.cv:
+            train_idx, test_idx = cv_train_test_indices(
+                n,
+                k_folds=cfg.k_folds,
+                testfold=testfold_idx,
+                seed=cfg.seed,
+            )
+            train_data = [graph_list[i] for i in train_idx]
+            test_data  = [graph_list[i] for i in test_idx]
+            val_data = [] # to test 
+            print("\n***Cross-validation with test fold {}***\n".format(testfold_idx))
+
         else: 
-            # Apply the *same* stats to every split
-            train_data = [normalize_zscore_pyg(
-                                        g, 
-                                        stats, 
-                                        cont_idx=cont_idx,
-                                        centroid_idx=centroid_idx,
-                                        normalize_centroid=None
-                                        ) for g in train_data]
-            val_data   = [normalize_zscore_pyg(
-                                        g, 
-                                        stats, 
-                                        cont_idx=cont_idx,
-                                        centroid_idx=centroid_idx,
-                                        normalize_centroid=None
-                                        ) for g in val_data]
-            test_data  = [normalize_zscore_pyg(
-                                        g, 
-                                        stats, 
-                                        cont_idx=cont_idx,
-                                        centroid_idx=centroid_idx,
-                                        normalize_centroid=None
-                                        ) for g in test_data]
+            if cfg.dataset == 'skinwsi':
+                # Calculate split indices
+                train_end = int(cfg.train_prop * n)
+                val_end = int(cfg.train_prop * n + cfg.valid_prop * n)
+
+                train_data = graph_list[:train_end]
+                val_data = graph_list[train_end:val_end]
+                test_data = graph_list[val_end:]
+
+            if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
+                # we want the subgraph to be randomly spread in the training set 
+                random.shuffle(graph_list)
+                # the shuffle follow the defined seeds above
+
+                # Calculate split indices
+                train_end = int(cfg.train_prop * n)
+                val_end = int(cfg.train_prop * n + cfg.valid_prop * n)
+
+                train_data = graph_list[:train_end]
+                val_data = graph_list[train_end:val_end]
+                test_data = graph_list[val_end:]
 
 
-    ## Add cell type as a feature and skip normalization###
-    # gamma is useful only if there is a z-scoring normalization so put to 1 here 
-    if not cfg.zscore_normalization and cfg.celltype_asfeature:
-        train_data = [append_celltype_onehot_pyg(g,gamma=1) for g in train_data]
-        val_data = [append_celltype_onehot_pyg(g,gamma=1) for g in val_data]
-        test_data = [append_celltype_onehot_pyg(g,gamma=1) for g in test_data]
+        ### Normalization of features ###
+        if cfg.zscore_normalization:
+            centroid_idx = [1,2]
+            cont_idx = [0]
+            cont_idx = cont_idx + list(range(3, data.x.size(1)))  # all but centroid
+
+            # Fit on TRAIN graphs only
+            stats = fit_zscore_stats_pyg(train_data, cont_idx=cont_idx, centroid_idx=centroid_idx, device='cpu')
+
+            if cfg.celltype_asfeature:
+
+                ## Add cell type as a feature after normalization###
+                ## KEEP SPLITS SEPARATED )
+
+                # Apply the *same* stats to every split
+                train_data = [normalize_encode_celltype_pyg(
+                                              g, 
+                                              stats, 
+                                              cont_idx=cont_idx,
+                                              gamma=cfg.gamma,
+                                              centroid_idx=centroid_idx,
+                                              normalize_centroid=None
+                                              ) for g in train_data]
+                val_data = [normalize_encode_celltype_pyg(
+                                              g, 
+                                              stats, 
+                                              cont_idx=cont_idx,
+                                              gamma=cfg.gamma,
+                                              centroid_idx=centroid_idx,
+                                              normalize_centroid=None
+                                              ) for g in val_data]
+                test_data = [normalize_encode_celltype_pyg(
+                                              g, 
+                                              stats, 
+                                              cont_idx=cont_idx,
+                                              gamma=cfg.gamma,
+                                              centroid_idx=centroid_idx,
+                                              normalize_centroid=None
+                                              ) for g in test_data]
+            else: 
+                # Apply the *same* stats to every split
+                train_data = [normalize_zscore_pyg(
+                                            g, 
+                                            stats, 
+                                            cont_idx=cont_idx,
+                                            centroid_idx=centroid_idx,
+                                            normalize_centroid=None
+                                            ) for g in train_data]
+                val_data   = [normalize_zscore_pyg(
+                                            g, 
+                                            stats, 
+                                            cont_idx=cont_idx,
+                                            centroid_idx=centroid_idx,
+                                            normalize_centroid=None
+                                            ) for g in val_data]
+                test_data  = [normalize_zscore_pyg(
+                                            g, 
+                                            stats, 
+                                            cont_idx=cont_idx,
+                                            centroid_idx=centroid_idx,
+                                            normalize_centroid=None
+                                            ) for g in test_data]
 
 
-    ### Mask the hot-encoded cell type feature if needed ###
-    # do it for supervised classes to avoid data leakage
-    if cfg.celltype_asfeature:
-        mask_on_graph_list(train_data, classes=[4, 5], label_base=0)
-        mask_on_graph_list(val_data, classes=[4, 5], label_base=0)
-        mask_on_graph_list(test_data, classes=[4, 5], label_base=0)
-
-        # Sanity check 
-        print("Sanity check on train split masking... ")
-        sanity_check_graph_list(train_data, (4,5), label_base=0)
-        print("Sanity check on val split masking... ")
-        sanity_check_graph_list(val_data,   (4,5), label_base=0)
-        print("Sanity check on test split masking... ")
-        sanity_check_graph_list(test_data,  (4,5), label_base=0)
+        ## Add cell type as a feature and skip normalization###
+        # gamma is useful only if there is a z-scoring normalization so put to 1 here 
+        if not cfg.zscore_normalization and cfg.celltype_asfeature:
+            train_data = [append_celltype_onehot_pyg(g,gamma=1) for g in train_data]
+            val_data = [append_celltype_onehot_pyg(g,gamma=1) for g in val_data]
+            test_data = [append_celltype_onehot_pyg(g,gamma=1) for g in test_data]
 
 
-    ### dataloader and batching ###
-    if cfg.dataset == 'skinwsi':
-       # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
-        train_loader = DataLoader(train_data, batch_size=1, shuffle=True,  collate_fn=Batch.from_data_list)
-        val_loader = DataLoader(val_data, batch_size=1,  collate_fn=Batch.from_data_list)
-        test_loader = DataLoader(test_data, batch_size=1,  collate_fn=Batch.from_data_list)
+        ### Mask the hot-encoded cell type feature if needed ###
+        # do it for supervised classes to avoid data leakage
+        if cfg.celltype_asfeature:
+            mask_on_graph_list(train_data, classes=[4, 5], label_base=0)
+            mask_on_graph_list(val_data, classes=[4, 5], label_base=0)
+            mask_on_graph_list(test_data, classes=[4, 5], label_base=0)
 
-    if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
-       # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
-        train_loader = DataLoader(train_data, batch_size=cfg.trainsubgraphs_batch_size, shuffle=True,  collate_fn=Batch.from_data_list)
-        val_loader = DataLoader(val_data, batch_size=cfg.trainsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
-        test_loader = DataLoader(test_data, batch_size=cfg.testsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
+            # Sanity check 
+            print("Sanity check on train split masking... ")
+            sanity_check_graph_list(train_data, (4,5), label_base=0)
+            print("Sanity check on val split masking... ")
+            sanity_check_graph_list(val_data,   (4,5), label_base=0)
+            print("Sanity check on test split masking... ")
+            sanity_check_graph_list(test_data,  (4,5), label_base=0)
 
 
+        ### dataloader and batching ###
+        if cfg.dataset == 'skinwsi':
+           # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
+            train_loader = DataLoader(train_data, batch_size=1, shuffle=True,  collate_fn=Batch.from_data_list)
+            val_loader = DataLoader(val_data, batch_size=1,  collate_fn=Batch.from_data_list)
+            test_loader = DataLoader(test_data, batch_size=1,  collate_fn=Batch.from_data_list)
 
-
-
-    ### Display information of dataset (nbr graphs and so on..) ###
-    num_graphs = len(graph_list)
-    num_nodes_list = [data.num_nodes for data in graph_list]
-    num_edges_list = [len(data.edge_index[0]) for data in graph_list]
-
-    # Collect all node labels
-    all_labels = []
-    for data in graph_list:
-        y = data.label
-        if y.ndim == 1:
-            all_labels.extend(y.tolist())
-        elif y.ndim == 2 and y.size(1) == 1:
-            all_labels.extend(y.squeeze(1).tolist())
-        else:
-            raise ValueError("Unexpected label shape: expected 1D or (N,1), got " + str(y.shape))
-
-    # Determine number of classes
-    label_tensor = torch.tensor(all_labels)
-    num_classes = label_tensor.max().item() + 1 if label_tensor.numel() > 0 else "unknown"
-    c = num_classes
-
-    # Node feature dimension (assume consistent shape)
-    d = graph_list[0].x.shape[1]
-
-    # display information 
-    print(f"\ndataset {cfg.dataset} | num graphs: {num_graphs}")
-    print(f"avg #nodes/graph: {sum(num_nodes_list)/num_graphs:.2f}, min: {min(num_nodes_list)}, max: {max(num_nodes_list)}")
-    print(f"avg #edges/graph: {sum(num_edges_list)/num_graphs:.2f}, min: {min(num_edges_list)}, max: {max(num_edges_list)}")
-    print(f"node feature dim: {d}")
-    print(f"num node classes: {num_classes}")
-
-    # Count node labels per class
-    class_counts = Counter(all_labels)
-    print("\nNode count per class:")
-    for cls, count in sorted(class_counts.items()):
-        print(f"Class {cls}: {count} nodes")
+        if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
+           # Torch Dataloader, We use collate_graphs that the dataloader can take NCDataset instance as input
+            train_loader = DataLoader(train_data, batch_size=cfg.trainsubgraphs_batch_size, shuffle=True,  collate_fn=Batch.from_data_list)
+            val_loader = DataLoader(val_data, batch_size=cfg.trainsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
+            test_loader = DataLoader(test_data, batch_size=cfg.testsubgraphs_batch_size,  collate_fn=Batch.from_data_list)
 
 
 
-    ### Load method ### 
-    model = parse_method(cfg, c, d, device) #(args, num_classes, num_feats, device)
+
+
+        ### Display information of dataset (nbr graphs and so on..) ###
+        num_graphs = len(graph_list)
+        num_nodes_list = [data.num_nodes for data in graph_list]
+        num_edges_list = [len(data.edge_index[0]) for data in graph_list]
+
+        # Collect all node labels
+        all_labels = []
+        for data in graph_list:
+            y = data.label
+            if y.ndim == 1:
+                all_labels.extend(y.tolist())
+            elif y.ndim == 2 and y.size(1) == 1:
+                all_labels.extend(y.squeeze(1).tolist())
+            else:
+                raise ValueError("Unexpected label shape: expected 1D or (N,1), got " + str(y.shape))
+
+        # Determine number of classes
+        label_tensor = torch.tensor(all_labels)
+        num_classes = label_tensor.max().item() + 1 if label_tensor.numel() > 0 else "unknown"
+        c = num_classes
+
+        # Node feature dimension (assume consistent shape)
+        d = graph_list[0].x.shape[1]
+
+        # display information 
+        print(f"\ndataset {cfg.dataset} | num graphs: {num_graphs}")
+        print(f"avg #nodes/graph: {sum(num_nodes_list)/num_graphs:.2f}, min: {min(num_nodes_list)}, max: {max(num_nodes_list)}")
+        print(f"avg #edges/graph: {sum(num_edges_list)/num_graphs:.2f}, min: {min(num_edges_list)}, max: {max(num_edges_list)}")
+        print(f"node feature dim: {d}")
+        print(f"num node classes: {num_classes}")
+
+        # Count node labels per class
+        class_counts = Counter(all_labels)
+        print("\nNode count per class:")
+        for cls, count in sorted(class_counts.items()):
+            print(f"Class {cls}: {count} nodes")
 
 
 
-    ### Loss function (Single-class, Multi-class) ###
-    if cfg.trainingtask == "binnodeclass_mask":
-        criterion = nn.BCEWithLogitsLoss()
-    else:
-        criterion = nn.NLLLoss()
+        ### Load method ### 
+        model = parse_method(cfg, c, d, device) #(args, num_classes, num_feats, device)
 
 
 
-    ### Performance metric (Acc, AUC, F1) ###
-    if cfg.metric == 'rocauc':
+        ### Loss function (Single-class, Multi-class) ###
         if cfg.trainingtask == "binnodeclass_mask":
-            eval_func = eval_binary_rocauc
+            criterion = nn.BCEWithLogitsLoss()
         else:
-            eval_func = eval_rocauc
-    elif cfg.metric == 'f1':
-        if cfg.trainingtask == "binnodeclass_mask":
-            eval_func = eval_binary_f1
+            criterion = nn.NLLLoss()
+
+
+
+        ### Performance metric (Acc, AUC, F1) ###
+        if cfg.metric == 'rocauc':
+            if cfg.trainingtask == "binnodeclass_mask":
+                eval_func = eval_binary_rocauc
+            else:
+                eval_func = eval_rocauc
+        elif cfg.metric == 'f1':
+            if cfg.trainingtask == "binnodeclass_mask":
+                eval_func = eval_binary_f1
+            else:
+                eval_func = eval_f1
+        elif cfg.metric == 'bacc':
+            if cfg.trainingtask == "binnodeclass_mask":
+                eval_func = eval_binary_bacc
+            else:
+                eval_func = eval_bacc
         else:
-            eval_func = eval_f1
-    elif cfg.metric == 'bacc':
-        if cfg.trainingtask == "binnodeclass_mask":
-            eval_func = eval_binary_bacc
-        else:
-            eval_func = eval_bacc
-    else:
-        if cfg.trainingtask == "binnodeclass_mask":
-            eval_func = eval_binary_acc
-        else:
-            eval_func = eval_acc
+            if cfg.trainingtask == "binnodeclass_mask":
+                eval_func = eval_binary_acc
+            else:
+                eval_func = eval_acc
 
 
-    logger = Logger(cfg.runs, cfg)
+        logger = Logger(cfg.runs, cfg)
 
-    model.train()
-    print('\n MODEL:', model)
+        model.train()
+        print('\n MODEL:', model)
 
 
 
-    ### Training loop ###
-    for run in range(cfg.runs):
+        ### Training loop ###
+        for run in range(cfg.runs):
 
-        model.reset_parameters()
-        model.to(device)
+            model.reset_parameters()
+            model.to(device)
 
-        if cfg.method == 'sgformer':
-            optimizer = torch.optim.Adam([
-                {'params': model.params1, 'weight_decay': cfg.trans_weight_decay},
-                {'params': model.params2, 'weight_decay': cfg.gnn_weight_decay}
-            ], lr=cfg.lr)
-        else:
-            optimizer = torch.optim.Adam(
-                model.parameters(), weight_decay=cfg.weight_decay, lr=cfg.lr)
-            
+            if cfg.method == 'sgformer':
+                optimizer = torch.optim.Adam([
+                    {'params': model.params1, 'weight_decay': cfg.trans_weight_decay},
+                    {'params': model.params2, 'weight_decay': cfg.gnn_weight_decay}
+                ], lr=cfg.lr)
+            else:
+                optimizer = torch.optim.Adam(
+                    model.parameters(), weight_decay=cfg.weight_decay, lr=cfg.lr)
+                
 
-        train_start_training = time.time()
+            train_start_training = time.time()
 
-        for epoch in range(cfg.epochs):
-            model.train()
-            # total_loss = 0.0
+            for epoch in range(cfg.epochs):
+                model.train()
+                # total_loss = 0.0
 
-            for data in train_loader:           # each `data` is one graph
+                for data in train_loader:           # each `data` is one graph
 
-                data = data.to(device)          # moves x, edge_index, y, etc.
-                optimizer.zero_grad()     
+                    data = data.to(device)          # moves x, edge_index, y, etc.
+                    optimizer.zero_grad()     
 
-                if cfg.method ==  'nodeformerbin':
-                    out, link_loss_ = model(data.x, data.edge_index)
-                    # link_loss_ is typically a list/tuple of per-layer link log-likelihood terms
-                    link_reg = sum(link_loss_) / len(link_loss_)
-                else:
-                    out = model(data.x, data.edge_index)
+                    if cfg.method ==  'nodeformerbin':
+                        out, link_loss_ = model(data.x, data.edge_index)
+                        # link_loss_ is typically a list/tuple of per-layer link log-likelihood terms
+                        link_reg = sum(link_loss_) / len(link_loss_)
+                    else:
+                        out = model(data.x, data.edge_index)
 
 
-                if cfg.trainingtask == "binnodeclass_mask":
+                    if cfg.trainingtask == "binnodeclass_mask":
 
-                    if not nodestype == 'notumor': 
+                        if not nodestype == 'notumor': 
 
-                        # Binary masked loss: supervise only nodes with labels {4,5}
-                        logits = out
-                        if logits.dim() == 2 and logits.size(1) == 1:
-                            logits = logits.squeeze(1)
-                        else:
-                            assert logits.dim() == 1, "Binary head must output [N] or [N,1]."
+                            # Binary masked loss: supervise only nodes with labels {4,5}
+                            logits = out
+                            if logits.dim() == 2 and logits.size(1) == 1:
+                                logits = logits.squeeze(1)
+                            else:
+                                assert logits.dim() == 1, "Binary head must output [N] or [N,1]."
 
-                        y = data.label.view(-1)
+                            y = data.label.view(-1)
 
-                        # PyTorch 1.9: no torch.isin, so use logical OR
-                        mask_45 = (y == 4) | (y == 5)
+                            # PyTorch 1.9: no torch.isin, so use logical OR
+                            mask_45 = (y == 4) | (y == 5)
 
-                        if not mask_45.any():
-                            # no eligible nodes in this batch
-                            # but we can still train structure with link regularizer only
+                            if not mask_45.any():
+                                # no eligible nodes in this batch
+                                # but we can still train structure with link regularizer only
+                                if cfg.method ==  'nodeformerbin':
+                                    loss = - cfg.lamda * link_reg
+                                    loss.backward()
+                                    optimizer.step()
+                                continue  
+
+                            y_bin = (y == 5).float()          # 5 -> 1, 4 -> 0
+
+                            loss = criterion(logits[mask_45], y_bin[mask_45])  # BCEWithLogitsLoss
+
+                            # The logic is quite different than for main.py, both because now we are working with batches
+                            # and because we are working with the train loader instances instead of graph dictionnaries 
+
                             if cfg.method ==  'nodeformerbin':
-                                loss = - cfg.lamda * link_reg
-                                loss.backward()
-                                optimizer.step()
-                            continue  
+                                # we update the loss with he regularization term
+                                loss = loss - cfg.lamda * link_reg
 
-                        y_bin = (y == 5).float()          # 5 -> 1, 4 -> 0
+                        else:
 
-                        loss = criterion(logits[mask_45], y_bin[mask_45])  # BCEWithLogitsLoss
-
-                        # The logic is quite different than for main.py, both because now we are working with batches
-                        # and because we are working with the train loader instances instead of graph dictionnaries 
-
-                        if cfg.method ==  'nodeformerbin':
-                            # we update the loss with he regularization term
-                            loss = loss - cfg.lamda * link_reg
+                            raise ValueError("No notumor mode for several graph dataset implemented yet.") 
 
                     else:
+                        out = F.log_softmax(out, dim=1)
+                        target = data.label.squeeze()
 
-                        raise ValueError("No notumor mode for several graph dataset implemented yet.") 
-
-                else:
-                    out = F.log_softmax(out, dim=1)
-                    target = data.label.squeeze()
-
-                    loss = criterion(out, target)
+                        loss = criterion(out, target)
 
 
-                loss.backward()
-                optimizer.step()
+                    loss.backward()
+                    optimizer.step()
 
 
-            # total_loss += loss.item()
+                # total_loss += loss.item()
 
-            # avg_train_loss = total_loss / len(train_loader)
+                # avg_train_loss = total_loss / len(train_loader)
 
-            ### Periodic evaluatio and logging
-            if epoch % cfg.eval_step == 0:
+                ### Periodic evaluatio and logging
+                if epoch % cfg.eval_step == 0:
 
-                if cfg.trainingtask == "binnodeclass_mask":
-                    train_metric, train_loss = evaluate_binmasked_wloader(
-                        model, 
-                        train_loader, 
-                        eval_func, 
-                        criterion, 
-                        cfg, 
-                        device, 
-                        celltype_asfeature=cfg.celltype_asfeature
-                    )
-                    val_metric,   val_loss   = evaluate_binmasked_wloader(
-                        model, 
-                        val_loader, 
-                        eval_func, 
-                        criterion, 
-                        cfg, 
-                        device, 
-                        celltype_asfeature=cfg.celltype_asfeature
-                    )
-                    test_metric,  _          = evaluate_binmasked_wloader(
-                        model, 
-                        test_loader, 
-                        eval_func, 
-                        criterion, 
-                        cfg, 
-                        device, 
-                        celltype_asfeature=cfg.celltype_asfeature
-                    )
-                else:
-                    train_metric, train_loss = evaluate_wloader(
-                        model, 
-                        train_loader, 
-                        eval_func, 
-                        criterion, 
-                        cfg, 
-                        device, 
-                        celltype_asfeature=cfg.celltype_asfeature
-                    )
-                    val_metric,   val_loss   = evaluate_wloader(
-                        model, 
-                        val_loader, 
-                        eval_func, 
-                        criterion, 
-                        cfg, 
-                        device, 
-                        celltype_asfeature=cfg.celltype_asfeature
-                    )
-                    test_metric,  _          = evaluate_wloader(
-                        model, 
-                        test_loader, 
-                        eval_func, 
-                        criterion, 
-                        cfg, 
-                        device, 
-                        celltype_asfeature=cfg.celltype_asfeature
-                    )
-                    
-                logger.add_result(run, [train_metric, val_metric, test_metric, val_loss])
+                    if cfg.trainingtask == "binnodeclass_mask":
+                        train_metric, train_loss = evaluate_binmasked_wloader(
+                            model, 
+                            train_loader, 
+                            eval_func, 
+                            criterion, 
+                            cfg, 
+                            device, 
+                            celltype_asfeature=cfg.celltype_asfeature
+                        )
+                        val_metric,   val_loss   = evaluate_binmasked_wloader(
+                            model, 
+                            val_loader, 
+                            eval_func, 
+                            criterion, 
+                            cfg, 
+                            device, 
+                            celltype_asfeature=cfg.celltype_asfeature
+                        )
+                        test_metric,  _          = evaluate_binmasked_wloader(
+                            model, 
+                            test_loader, 
+                            eval_func, 
+                            criterion, 
+                            cfg, 
+                            device, 
+                            celltype_asfeature=cfg.celltype_asfeature
+                        )
+                    else:
+                        train_metric, train_loss = evaluate_wloader(
+                            model, 
+                            train_loader, 
+                            eval_func, 
+                            criterion, 
+                            cfg, 
+                            device, 
+                            celltype_asfeature=cfg.celltype_asfeature
+                        )
+                        val_metric,   val_loss   = evaluate_wloader(
+                            model, 
+                            val_loader, 
+                            eval_func, 
+                            criterion, 
+                            cfg, 
+                            device, 
+                            celltype_asfeature=cfg.celltype_asfeature
+                        )
+                        test_metric,  _          = evaluate_wloader(
+                            model, 
+                            test_loader, 
+                            eval_func, 
+                            criterion, 
+                            cfg, 
+                            device, 
+                            celltype_asfeature=cfg.celltype_asfeature
+                        )
+                        
+                    logger.add_result(run, [train_metric, val_metric, test_metric, val_loss])
 
-                if epoch % cfg.display_step == 0:
+                    if epoch % cfg.display_step == 0:
 
-                    print_str = f'Epoch: {epoch:02d}, ' + \
-                                f'Train Loss: {train_loss:.4f}, ' + \
-                                f'Train: {100*train_metric:.2f}%, ' + \
-                                f'Val Loss: {val_loss:.4f}, ' + \
-                                f'Val:   {100*val_metric:.2f}%, '  + \
-                                f'Test: {100*test_metric:.2f}%'
-                    print(print_str)
-    
-    logger.print_statistics(run)
-
-    ### Print global training stats
-    ### NOT necessary here?
-
-    ### Save model ###
-    if cfg.save_model:
-        # Get current timestamp
-        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-
-        #create the model directory if does not exists:
-        if not os.path.exists(cfg.model_dir):
-            os.mkdir(cfg.model_dir)
-
-        # Add prefix to the name of the weights if the task was 
-        # Binary Node Classification with Known Context Nodes
-        if cfg.trainingtask == "binnodeclass_mask":
-            save_path = os.path.join(
-                cfg.model_dir, 
-                f"binnodeclass_{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
-            )
-        else:
-            save_path = os.path.join(
-                cfg.model_dir, 
-                f"{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
-            )
+                        print_str = f'Epoch: {epoch:02d}, ' + \
+                                    f'Train Loss: {train_loss:.4f}, ' + \
+                                    f'Train: {100*train_metric:.2f}%, ' + \
+                                    f'Val Loss: {val_loss:.4f}, ' + \
+                                    f'Val:   {100*val_metric:.2f}%, '  + \
+                                    f'Test: {100*test_metric:.2f}%'
+                        print(print_str)
+        
+        logger.print_statistics(run)
 
 
-        torch.save(model.state_dict(), save_path)
-        print(f"[INFO] Model weights saved to: {save_path}")    
+        ### Print global training stats
+        ### NOT necessary here?
 
+        ### Save model ###
+        if (not cfg.cv) and (cfg.save_model):
+            # Get current timestamp
+            timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+
+            #create the model directory if does not exists:
+            if not os.path.exists(cfg.model_dir):
+                os.mkdir(cfg.model_dir)
+
+            # Add prefix to the name of the weights if the task was 
+            # Binary Node Classification with Known Context Nodes
+            if cfg.trainingtask == "binnodeclass_mask":
+                save_path = os.path.join(
+                    cfg.model_dir, 
+                    f"binnodeclass_{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
+                )
+            else:
+                save_path = os.path.join(
+                    cfg.model_dir, 
+                    f"{cfg.method}_{cfg.dataset}_run{timestamp}.pth"
+                )
+
+
+            torch.save(model.state_dict(), save_path)
+            print(f"[INFO] Model weights saved to: {save_path}")    
+
+        ### some possible gathering before running the next cross val instance
+
+    ### possible gathered information from cross validation  
 
 
 

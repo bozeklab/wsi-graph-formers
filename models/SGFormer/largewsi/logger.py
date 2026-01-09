@@ -11,7 +11,10 @@ class Logger(object):
         assert run >= 0 and run < len(self.results)
         self.results[run].append(result)
 
-    def print_statistics(self, run=None, mode='max_acc'):
+    def print_statistics(self, run=None, mode='max_acc', cv=False):
+        if cv:
+            print("Only 2 splits, train and test. All results for valid are then None or 0s. Chosen epoch won't work neither.\n")
+
         if run is not None:
             result = 100 * torch.tensor(self.results[run])
             argmax = result[:, 1].argmax().item()

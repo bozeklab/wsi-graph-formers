@@ -129,7 +129,7 @@ def evaluate_wloader(model,
 
 
 @torch.no_grad()
-def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg, result=None):
+def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg, result=None, only2splits = False):
     if result is not None:
         out = result
     else:
@@ -160,10 +160,17 @@ def evaluate_binary_masked(model, dataset, split_idx, eval_func, criterion, cfg,
         filtered_idx = idx[class_mask[idx]]
         return criterion(out[filtered_idx], binary_labels[filtered_idx])
 
+
     train_metric = filtered_eval('train')
-    valid_metric = filtered_eval('valid')
-    test_metric  = filtered_eval('test')
-    valid_loss = filtered_loss('valid')
+    if only2splits:
+        valid_metric = 0
+    else:
+        valid_metric = filtered_eval('valid')
+    test_metric  = filtered_eval('test')    
+    if only2splits:
+        valid_loss = 0
+    else:
+        valid_loss = filtered_loss('valid') 
 
     return train_metric, valid_metric, test_metric, valid_loss, out
 
