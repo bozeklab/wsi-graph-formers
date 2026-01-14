@@ -1,7 +1,7 @@
 # configfile.yaml
 defaults:
   - _self_
-  - experiments: tonameasarg
+  # - experiments: tonameasarg
 
 ## base configs
 dataset: ""
@@ -54,13 +54,14 @@ customload: True                       # if True, can load extra parameters spec
 
 
 ## inference
-infer_graphtype: infermulticlass      # [infer-multiclass, inferbinary]
-model_name: ""
-nbrclass_toinfer: 5
-pred_input_dir: ../../Data_General/Predictions/input_wsigraph/
-pred_input_name: graph_r50_4539-14_simplified_3-hops-ngbr.pt
-pred_output_dir: predictions/
-pred_output_name: graph_r50_4539-14_simplified_3-hops-ngbr 
+multi_graph_infer: True
+infer_graphtype: inferbinary           # [infer-multiclass, inferbinary]
+model_name: "binnodeclass_sgformerbin_subgraphs-onegraphskinwsi_run20251007-124352.pth"
+nbrclass_toinfer: 2
+pred_input_dir:  /data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/pyg_graphs/r50_mote/
+pred_input_name: graph_r50_4539-14_simplified_3-hops-ngbr.pt   # only for one graph infer
+pred_output_dir: /data/lsancere/Data_General/Predictions/input_wsigraph/full_dataset_notsimplified/
+pred_output_name: graph_r50_4539-14_simplified_3-hops-ngbr     # only for one graph infer 
 
 
 ## cross-validation

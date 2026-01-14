@@ -92,7 +92,7 @@ def load_dataset(data_dir, dataname, sub_dataname='', ):
     """ Loader for NCDataset 
         Returns NCDataset 
     """
-    print(dataname)
+    # print(dataname)
     if dataname == 'twitch-e':
         # twitch-explicit graph
         if sub_dataname not in ('DE', 'ENGB', 'ES', 'FR', 'PTBR', 'RU', 'TW'):
