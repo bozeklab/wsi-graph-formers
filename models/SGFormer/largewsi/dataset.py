@@ -140,10 +140,14 @@ def load_dataset(data_dir, dataname, sub_dataname='', ):
         dataset = load_skinwsi_dataset(data_dir, dataname)
     elif dataname == 'subgraphs-skinwsi':
         dataset = load_subgraphs_skinwsi_dataset(data_dir, dataname)
-    elif dataname == 'infermulticlass':
-        dataset = load_infer_skinwsi(data_dir, dataname, sub_dataname)
-    elif dataname == 'inferbinary':
-        dataset = load_infer_binskinwsi(data_dir, dataname, sub_dataname)
+    # elif dataname == 'inferbinary':
+    #     dataset = load_infer_binskinwsi(data_dir, dataname, sub_dataname)
+    # elif dataname == 'infermulticlass':
+    #     dataset = load_infer_skinwsi(data_dir, dataname, sub_dataname)
+    elif dataname == 'inferin':
+        dataset = load_inferin_skinwsi(data_dir, dataname, sub_dataname)
+    elif dataname == 'predout':
+        dataset = load_predout_skinwsi(data_dir, dataname, sub_dataname)        
     else:
         raise ValueError('Invalid dataname')
     return dataset
@@ -327,7 +331,8 @@ def load_skinwsi_onegraphdataset(data_dir,
     seed=42, 
     train_prop=0.5, 
     valid_prop=0.25, 
-    sub_datasetname=""
+    sub_datasetname="",
+    load_inference = False
     ):
 
     #graphname="graph_r50_4539-14.pt"
@@ -463,6 +468,7 @@ def load_subgraphs_skinwsi_dataset(data_dir,
         if file.endswith(".pt"):
 
             graph_dict = torch.load(os.path.join(data_folder, file))
+            graphname = os.path.split(file)[1]
 
              # Create NCDataset
             onegraphdataset = NCDataset(dataname)
@@ -487,6 +493,7 @@ def load_subgraphs_skinwsi_dataset(data_dir,
                 'num_nodes': num_nodes
             }
             onegraphdataset.label = label
+            onegraphdataset.name = graphname
 
             subgraph_list.append(onegraphdataset)
 
@@ -496,54 +503,25 @@ def load_subgraphs_skinwsi_dataset(data_dir,
 
 
 
-######
-# THIS SHOULD BE MODIFIED IN THE FUTURE TO ALSO MATCH SEVERAL GRAPH INFERENCE 
-#####
-def load_infer_skinwsi(data_dir, infer_graphtype, data_name):
+def load_inferin_skinwsi(data_dir, dataname, data_name):
     graphname = data_name
     graph_path = data_dir + graphname
     graph_dict = torch.load(graph_path)
 
     # Create NCDataset
-    dataset = NCDataset(infer_graphtype)
+    dataset = NCDataset(dataname)
 
     # We did not import the labels (node class) as they will be infered
     edge_index = graph_dict['edge_index']
     node_feat = graph_dict['x']
     num_nodes = node_feat.shape[0]
-    # In addition to the training set where centroids are not neede (only edges)
-    # here we will need to save the centroids in order to visualize the graph safter inference
-    centroids = graph_dict['centroid']
+    label = graph_dict['y']    
 
-    dataset.graph = {
-        'edge_index': edge_index,
-        'node_feat': node_feat,
-        'edge_feat': None,
-        'num_nodes': num_nodes,
-        'centroid': centroids
-    }
-    dataset.label = None 
-    
-    return dataset
-
-
-
-######
-# THIS SHOULD BE MODIFIED IN THE FUTURE TO ALSO MATCH SEVERAL GRAPH INFERENCE 
-#####
-def load_infer_binskinwsi(data_dir, infer_graphtype, data_name):
-    graphname = data_name
-    graph_path = data_dir + graphname
-    graph_dict = torch.load(graph_path)
-
-    # Create NCDataset
-    dataset = NCDataset(infer_graphtype)
-
-    # We did not import the labels (node class) as they will be infered
-    edge_index = graph_dict['edge_index']
-    node_feat = graph_dict['x']
-    label = graph_dict['y']
-    num_nodes = node_feat.shape[0]
+    #rename (reorder) classes to fit with training 
+    # unclassified cells will be label -1
+    for cellclass in range(0,7):  
+        label[label == cellclass] = cellclass - 1
+    # now background cells will have label -1 
     # In addition to the training set where centroids are not neede (only edges)
     # here we will need to save the centroids in order to visualize the graph safter inference
     centroids = graph_dict['centroid']
@@ -558,6 +536,97 @@ def load_infer_binskinwsi(data_dir, infer_graphtype, data_name):
     dataset.label = label 
     
     return dataset
+
+
+
+
+def load_predout_skinwsi(data_dir, dataname, data_name):
+    graphname = data_name
+    graph_path = data_dir + graphname
+    graph_dict = torch.load(graph_path)
+
+    # Create NCDataset
+    dataset = NCDataset(dataname)
+
+    # We did not import the labels (node class) as they will be infered
+    edge_index = graph_dict['edge_index']
+    node_feat = graph_dict['x']
+    num_nodes = node_feat.shape[0]
+    label = graph_dict['y']   # label -1 for nodes that did not need to be classified  ce
+    centroids = graph_dict['centroid']
+
+    dataset.graph = {
+        'edge_index': edge_index,
+        'node_feat': node_feat,
+        'edge_feat': None,
+        'num_nodes': num_nodes,
+        'centroid': centroids
+    }
+    dataset.label = label 
+    
+    return dataset
+
+
+
+######
+# THIS SHOULD BE MODIFIED IN THE FUTURE TO ALSO MATCH SEVERAL GRAPH INFERENCE 
+#####
+# def load_infer_binskinwsi(data_dir, dataname, data_name):
+#     graphname = data_name
+#     graph_path = data_dir + graphname
+#     graph_dict = torch.load(graph_path)
+
+#     # Create NCDataset
+#     dataset = NCDataset(dataname)
+
+#     # We did not import the labels (node class) as they will be infered
+#     edge_index = graph_dict['edge_index']
+#     node_feat = graph_dict['x']
+#     label = graph_dict['y']
+#     num_nodes = node_feat.shape[0]
+
+#     #rename (reorder) classes to fit with training 
+#     # unclassified cells will be label -1
+#     for cellclass in range(0,7):  
+#         label[label == cellclass] = cellclass - 1
+#     # In addition to the training set where centroids are not neede (only edges)
+#     # here we will need to save the centroids in order to visualize the graph safter inference
+#     centroids = graph_dict['centroid']
+
+#     dataset.graph = {
+#         'edge_index': edge_index,
+#         'node_feat': node_feat,
+#         'edge_feat': None,
+#         'num_nodes': num_nodes,
+#         'centroid': centroids
+#     }
+#     dataset.label = label 
+    
+#     return dataset
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,7 +1,7 @@
 
 import argparse
 import sys
-import os, random
+import os, random, re
 import numpy as np
 import torch
 import torch.nn as nn
@@ -10,6 +10,7 @@ from torch_geometric.utils import to_undirected, remove_self_loops, add_self_loo
 from torch_scatter import scatter
 from torch_geometric.data import Batch , Data # for PyG v1.7
 from torch.utils.data import DataLoader 
+import pandas as pd
 
 
 from logger import Logger
@@ -19,7 +20,7 @@ from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, ev
     to_sparse_tensor, load_fixed_splits, adj_mul, get_gpu_memory_map, count_parameters
 from eval import evaluate_large, evaluate_batch, evaluate_wloader, evaluate_binmasked_wloader
 from parse import parse_method
-from collections import Counter
+from collections import Counter, defaultdict
 
 import time
 import pickle
@@ -127,7 +128,8 @@ def main(cfg: DictConfig):
                 edge_index= g.graph['edge_index'],
                 edge_feat= None,
                 num_nodes= g.graph['num_nodes'],
-                label= g.label
+                label= g.label,
+                name = g.name
             )
         converted.append(data)
 
@@ -154,6 +156,60 @@ def main(cfg: DictConfig):
         test_idx = folds[testfold]
         train_idx = np.concatenate([folds[i] for i in range(k_folds) if i != testfold])
         return train_idx, test_idx
+
+
+    ### graph ID to split the graph correctly into folds 
+    def normalize_wsi(s: str) -> str:
+        # collapse weird spacing so matching is stable
+        return re.sub(r"\s+", " ", s).strip()
+
+    def get_graph_id(item) -> str:
+        graphname = item.name
+        # path = _extract_path_from_item(item)
+
+        base = graphname.split("_simplified_3-hops-ngbr_")[0]
+        if base.startswith("subgraph_graph_r50_"):
+            base = base[len("subgraph_graph_r50_"):]
+        return normalize_wsi(base)
+
+
+    ### function to check epithelial nodes 
+    def has_epithelial_nodes(g) -> bool:
+        y = g.label
+        if not torch.is_tensor(y):
+            y = torch.as_tensor(y)
+
+        return ((y == 4) | (y == 5)).any().item()
+
+    # def _extract_path_from_item(item):
+    #     # Case 1: already a path
+    #     if isinstance(item, (str, bytes, os.PathLike)):
+    #         return os.fspath(item)
+
+    #     # Case 2: PyG Data-like object
+    #     # Try common attributes
+    #     for attr in ["path", "filepath", "file_path", "filename", "fname", "name"]:
+    #         if hasattr(item, attr):
+    #             val = getattr(item, attr)
+    #             if isinstance(val, (str, bytes, os.PathLike)):
+    #                 return os.fspath(val)
+
+    #     # Case 3: stored in Data dict (PyG supports item['key'] sometimes)
+    #     for key in ["path", "filepath", "file_path", "filename", "fname", "name"]:
+    #         try:
+    #             val = item[key]
+    #             if isinstance(val, (str, bytes, os.PathLike)):
+    #                 return os.fspath(val)
+    #         except Exception:
+    #             pass
+
+    #     raise TypeError(
+    #         f"Cannot extract path from item of type {type(item)}. "
+    #         f"Available attrs: {dir(item)[:30]} ..."
+    #     )
+
+
+
 
 
     # create limit index for the loop
@@ -190,7 +246,8 @@ def main(cfg: DictConfig):
                 val_data = graph_list[train_end:val_end]
                 test_data = graph_list[val_end:]
 
-            if cfg.dataset == 'subgraphs-skinwsi' or cfg.dataset == 'subgraphs-onegraphskinwsi':
+            elif  cfg.dataset == 'subgraphs-onegraphskinwsi':
+                
                 # we want the subgraph to be randomly spread in the training set 
                 random.shuffle(graph_list)
                 # the shuffle follow the defined seeds above
@@ -202,6 +259,90 @@ def main(cfg: DictConfig):
                 train_data = graph_list[:train_end]
                 val_data = graph_list[train_end:val_end]
                 test_data = graph_list[val_end:]
+
+            elif cfg.dataset == 'subgraphs-skinwsi':
+
+                # Load metadata and keep ONLY tumor images 
+                meta = pd.read_csv(cfg.patient_csv, sep=";")
+                meta["WSI_sample"] = meta["WSI_sample"].map(normalize_wsi)
+                meta["Tumor"] = meta["Tumor"].astype(str).str.strip()
+
+                tumor_meta = meta[meta["Tumor"].str.lower().eq("yes")].copy()
+
+                wsi_to_patient = dict(zip(tumor_meta["WSI_sample"], tumor_meta["Patient_ID"]))
+                tumor_wsis = set(wsi_to_patient.keys())  # only these WSIs are allowed
+
+                # tumor-only: discard all subgraphs from non-tumor WSIs
+                graph_list_tumor = [g for g in graph_list if get_graph_id(g) in tumor_wsis]
+
+                # display which WSIs and are discard in the terminal
+                all_wsis_meta = set(meta["WSI_sample"])
+                kept_wsis_meta = set(tumor_meta["WSI_sample"])
+                discarded_wsis_by_tumor = sorted(all_wsis_meta - kept_wsis_meta)
+
+                print(f"Discarded WSIs (Tumor != Yes): {len(discarded_wsis_by_tumor)}")
+                for w in discarded_wsis_by_tumor[:50]:
+                    print("  ", w)
+
+                # tumor-only: keep subgraphs with at least one epithelial cell (tumor or not)
+                graph_list_epi = [g for g in graph_list_tumor if has_epithelial_nodes(g)]
+
+                # display number of subgraphs with and whithout epithelial
+                print("Tumor subgraphs total:", len(graph_list_tumor))
+                print("Tumor subgraphs with epithelial:", len(graph_list_epi))
+
+                # group subgraphs by parent image (WSI)
+                groups = defaultdict(list)
+                for g in graph_list_epi:
+                    gid = get_graph_id(g)           
+                    groups[gid].append(g)
+
+                # Group WSIs by patient, then split by patient
+                # patient_id -> list of WSI_sample ids
+                patients = defaultdict(list)  
+                for wsi in groups.keys():
+                    pid = wsi_to_patient[wsi]     
+                    patients[pid].append(wsi)
+
+
+                # shuffle following our seed
+                patient_ids = list(patients.keys())
+                random.shuffle(patient_ids) 
+
+                # split at patient  level
+                n_patients = len(patient_ids)
+                train_end = int(cfg.train_prop * n_patients)
+
+                train_pids = patient_ids[:train_end]
+                test_pids  = patient_ids[train_end:]
+                val_pids   = []  
+
+                # expand back to subgraphs
+                train_data = []
+                test_data = []
+                val_data = []
+                for pid in train_pids:
+                    for wsi in patients[pid]:
+                        train_data.extend(groups[wsi])
+
+                for pid in test_pids:
+                    for wsi in patients[pid]:
+                        test_data.extend(groups[wsi])
+
+                # leakage check
+                train_wsis = {get_graph_id(x) for x in train_data}
+                test_wsis  = {get_graph_id(x) for x in test_data}
+                assert train_wsis.isdisjoint(test_wsis)
+
+                train_pids_check = {wsi_to_patient[wsi] for wsi in train_wsis}
+                test_pids_check  = {wsi_to_patient[wsi] for wsi in test_wsis}
+                assert train_pids_check.isdisjoint(test_pids_check)
+
+                # count number of patients per split
+                print("Patients:", len(patient_ids))
+                print("Train patients:", len(train_pids), "Test patients:", len(test_pids))
+                print("Train subgraphs:", len(train_data), "Test subgraphs:", len(test_data))
+
 
 
         ### Normalization of features ###
@@ -283,13 +424,9 @@ def main(cfg: DictConfig):
             mask_on_graph_list(val_data, classes=[4, 5], label_base=0)
             mask_on_graph_list(test_data, classes=[4, 5], label_base=0)
 
-            # Sanity check 
+            # Sanity check for train (val or test can be empty list depending on situation)
             print("Sanity check on train split masking... ")
             sanity_check_graph_list(train_data, (4,5), label_base=0)
-            print("Sanity check on val split masking... ")
-            sanity_check_graph_list(val_data,   (4,5), label_base=0)
-            print("Sanity check on test split masking... ")
-            sanity_check_graph_list(test_data,  (4,5), label_base=0)
 
 
         ### dataloader and batching ###

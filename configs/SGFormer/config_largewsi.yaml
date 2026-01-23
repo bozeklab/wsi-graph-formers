@@ -1,7 +1,7 @@
 # configfile.yaml
 defaults:
   - _self_
-  # - experiments: tonameasarg
+  - experiments: tonameasarg
 
 ## base configs
 dataset: ""
@@ -26,8 +26,8 @@ seed: 123
 epochs: 500
 fixed_init: True                       # wether or not to have a fixed initialization
 runs: 1                                # number of distinct runs
-train_prop: 0.66                       # training label proportion
-valid_prop: 0.33                       # validation label proportion 
+train_prop: 0.80                       # training label proportion
+valid_prop: 0.20                       # validation label proportion 
 lr: 0.01
 batch_size: 10000                      # mini batch training for large graphs
 patience: 200                          # early stopping patience
@@ -35,11 +35,12 @@ weight_decay: 0.005
 dropout: 0.5
 
 trainingtask: binnodeclass_mask        # [nodeclassification, binnodeclass_mask]  (binnodeclass_mask = Binary Node Classification with Known Context Nodes)
-trainsubgraphs_batch_size: 5
-testsubgraphs_batch_size: 5
+trainsubgraphs_batch_size: 1
+testsubgraphs_batch_size: 1
 metric: bacc                           # evaluation metric
+patient_csv: "patient_csv to provide"  # if we split according to patient information provide csv path
 
-zscore_normalization: True             # normalize with z-scoring the features and add weight for the class feature 
+zscore_normalization: False            # normalize with z-scoring the features and add weight for the class feature 
 celltype_asfeature: True               # explanation to add 
 gamma: 6.0                             # scaling factor applied to the one-hot encoding of cell_type
 
@@ -55,13 +56,15 @@ customload: True                       # if True, can load extra parameters spec
 
 ## inference
 multi_graph_infer: True
+infer_onsimplified : False 
 infer_graphtype: inferbinary           # [infer-multiclass, inferbinary]
-model_name: "binnodeclass_sgformerbin_subgraphs-onegraphskinwsi_run20251007-124352.pth"
+model_name: "binnodeclass_sgformerbin_subgraphs-onegraphskinwsi_run20250930-155029.pth"
 nbrclass_toinfer: 2
-pred_input_dir:  /data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/pyg_graphs/r50_mote/
+pred_input_dir: /data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/pyg_graphs/experiments/debug_code/
 pred_input_name: graph_r50_4539-14_simplified_3-hops-ngbr.pt   # only for one graph infer
 pred_output_dir: /data/lsancere/Data_General/Predictions/input_wsigraph/full_dataset_notsimplified/
 pred_output_name: graph_r50_4539-14_simplified_3-hops-ngbr     # only for one graph infer 
+evalinfer: True 
 
 
 ## cross-validation

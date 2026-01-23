@@ -8,6 +8,7 @@ from collections import Counter
 
 from models.SGFormer.largewsi.parse import parse_method
 from models.SGFormer.largewsi.dataset import load_dataset
+from dataset_tools.simplify_graph import subgraph_filtering
 
 import hydra
 from omegaconf import DictConfig
@@ -22,7 +23,7 @@ from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
 from dataset import load_dataset, load_dataset_extra, NCDataset, custom_fixed_split, \
     custom_cv_split_train_test
 from torch_geometric.data import Batch , Data # for PyG v1.7
- 
+
 
 
 @hydra.main(config_path="../../../configs/SGFormer", config_name="config_largewsi", version_base=None)
@@ -44,16 +45,17 @@ def infer(cfg: DictConfig):
         files = [cfg.pred_input_dir + cfg.pred_input_name]
 
 
+    # for inference we load the graphs one by one so the dataset type is onegraphskinwsi
+    dataset_type = "inferin"
     for fname in files:
         if os.path.exists(fname):
-
             if cfg.multi_graph_infer:
                 print("Runnning inference {} on {}".format(infcount,len(files)))
                 infcount += 1
                 filename = os.path.split(fname)[1]
-                infergraph = load_dataset(cfg.pred_input_dir, cfg.infer_graphtype, sub_dataname=filename)
+                infergraph = load_dataset(cfg.pred_input_dir, dataset_type, sub_dataname=filename)
             else:
-                infergraph = load_dataset(cfg.pred_input_dir, cfg.infer_graphtype, sub_dataname=cfg.pred_input_name)
+                infergraph = load_dataset(cfg.pred_input_dir, dataset_type, sub_dataname=cfg.pred_input_name)
 
 
             ### Convert split list (graphs) into a list of torch_geometric.data.Data objects:
@@ -75,13 +77,26 @@ def infer(cfg: DictConfig):
                 infergraph = data
 
 
+
+            # ## We remove unclassified nodes because the models are not trained with it so we cannot infer with 7 classes
+            # keep_mask = (infergraph.label != 0) & (infergraph.label != -1)
+            # classified_nodes = keep_mask.nonzero(as_tuple=True)[0]
+            # infergraph = subgraph_filtering(infergraph, classified_nodes, filtering_step=1)
+
+            # ## rename labels to fit with training
+            # for cellclass in range(1,7):  
+            #     infergraph.label[infergraph.label == cellclass] = cellclass - 1
+           
+
+
             ### Normalization of features before test to correspond to training graph, having the same features ###
             if cfg.zscore_normalization:
                 centroid_idx = [1,2]
                 cont_idx = [0]
                 cont_idx = cont_idx + list(range(3, infergraph.x.shape[1]))  # all but centroid
 
-                stats = fit_zscore_stats_pyg([infergraph], cont_idx=cont_idx, centroid_idx=centroid_idx, device=device)
+                # stats = fit_zscore_stats_pyg([infergraph], cont_idx=cont_idx, centroid_idx=centroid_idx, device=device)
+                stats = needtoloadfromtraining
 
                 if cfg.celltype_asfeature:
 
@@ -155,26 +170,26 @@ def infer(cfg: DictConfig):
             c = cfg.nbrclass_toinfer
             d = infergraph.graph['node_feat'].shape[1]
 
-            print(f"inputgraph: {cfg.pred_input_name} | graph type: {cfg.infer_graphtype}\
+            print(f"inputgraph: {cfg.pred_input_name} \
             | num nodes: {n} | num edge: {e} | num node feats: {d} | num classes: {c}")
 
             # # adapt infer if we use the binary classification model 
-            if cfg.nbrclass_toinfer == 2:
+            # if cfg.nbrclass_toinfer == 2:
 
-                if cfg.nodestype == 'notumor': 
-                    values = torch.tensor([4], device=infergraph.label.device)
-                    infer_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
-                    infer_mask = infer_mask.view(-1)
+            #     if cfg.nodestype == 'notumor': 
+            #         values = torch.tensor([4], device=infergraph.label.device)
+            #         infer_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
+            #         infer_mask = infer_mask.view(-1)
 
-                else:
-                    # the most useful 
-                    # Mask for target classification nodes (4 or 5)
-                    values = torch.tensor([4, 5], device=infergraph.label.device)
-                    train_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
-                    train_mask = train_mask.view(-1)
-                    # values = torch.tensor([4], device=infergraph.label.device)
-                    # infer_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
-                    # infer_mask = infer_mask.view(-1)
+            #     else:
+            #         # the most useful 
+            #         # Mask for target classification nodes (4 or 5)
+            #         values = torch.tensor([4, 5], device=infergraph.label.device)
+            #         train_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
+            #         train_mask = train_mask.view(-1)
+            #         # values = torch.tensor([4], device=infergraph.label.device)
+            #         # infer_mask = torch.stack([infergraph.label == v for v in values]).any(dim=0)
+            #         # infer_mask = infer_mask.view(-1)
 
 
             ### Load method  
@@ -216,8 +231,8 @@ def infer(cfg: DictConfig):
                         # infer_mask = (infergraph.label == 5).float().view(-1) 
 
 
-                    # Initialize prediction tensor: fill everything with class 2 (for nodes not to classify)
-                    pred = torch.full_like(infergraph.label, fill_value=2, dtype=torch.long).to(device)
+                    # Initialize prediction tensor: fill everything with class -1 (for nodes not to classify)
+                    pred = torch.full_like(infergraph.label, fill_value=-1, dtype=torch.long).to(device)
 
                     # Apply sigmoid and threshold for binary prediction on class-4 nodes
                     probs = torch.sigmoid(out[infer_mask])
@@ -250,10 +265,10 @@ def infer(cfg: DictConfig):
                 if cfg.multi_graph_infer:
                     filename_noext = os.path.splitext(filename)[0]
                     saving_path = cfg.pred_output_dir + \
-                              f'predictions_{cfg.infer_graphtype}_{filename_noext}_{noext_modelname}.pt'
+                              f'predictions_{filename_noext}_{noext_modelname}.pt'
                 else:
                     saving_path = cfg.pred_output_dir + \
-                              f'predictions_{cfg.infer_graphtype}_{cfg.pred_output_name}_{noext_modelname}.pt'
+                              f'predictions_{cfg.pred_output_name}_{noext_modelname}.pt'
                 torch.save(outputgraph, saving_path)
                 print("Inference saved here: {} \n\n".format(saving_path))
 
