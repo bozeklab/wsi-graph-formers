@@ -25,8 +25,9 @@ import pickle
 import time 
 from contextlib import contextmanager
 
+from PIL import Image
 import openslide 
-
+import tifffile
 
 
 @contextmanager
@@ -259,7 +260,10 @@ def build_graph_from_json(json_path,
 
     cells = data.get("cells", data)
 
-    slide = openslide.OpenSlide(wsi_path)
+    try:
+        slide = openslide.OpenSlide(wsi_path)
+    except openslide.OpenSlideError:
+        slide = NonPyramidalTiffSlide(wsi_path)
 
     ids, centroids, cell_types = [], [], []
     morph_list, texture_list = [], []
@@ -374,6 +378,77 @@ def save_pickle_graph(graph, output_path, timing=False):
 
 
 
+
+
+
+# IN case we construct fgraph from patches and not from wsis ------
+
+class NonPyramidalTiffSlide:
+    def __init__(self, path: str):
+        arr = tifffile.imread(path)
+
+        if arr.ndim == 2:
+            rgb = np.stack([arr, arr, arr], axis=-1)
+        elif arr.ndim == 3:
+            if arr.shape[-1] in (3, 4):
+                rgb = arr[..., :3]
+            elif arr.shape[0] in (3, 4):
+                rgb = np.transpose(arr[:3, ...], (1, 2, 0))
+            else:
+                raise ValueError(f"Unsupported TIFF shape: {arr.shape}")
+        else:
+            raise ValueError(f"Unsupported TIFF ndim: {arr.ndim}")
+
+        if rgb.dtype != np.uint8:
+            if np.issubdtype(rgb.dtype, np.integer):
+                info = np.iinfo(rgb.dtype)
+                rgb = (rgb.astype(np.float32) / info.max * 255.0).round().astype(np.uint8)
+            else:
+                mx = float(np.nanmax(rgb))
+                if mx <= 1.0:
+                    rgb = (rgb * 255.0).round().astype(np.uint8)
+                else:
+                    rgb = np.clip(rgb, 0, 255).round().astype(np.uint8)
+
+        self._rgb = rgb
+        self._h, self._w = self._rgb.shape[:2]
+
+        self.level_count = 1
+        self.level_dimensions = [(self._w, self._h)]
+        self.dimensions = (self._w, self._h)
+
+    def read_region(self, location, level, size):
+        if level != 0:
+            raise ValueError("NonPyramidalTiffSlide only supports level=0.")
+
+        x, y = map(int, location)
+        w, h = map(int, size)
+
+        out = np.zeros((h, w, 4), dtype=np.uint8)
+
+        ix0 = max(0, x)
+        iy0 = max(0, y)
+        ix1 = min(self._w, x + w)
+        iy1 = min(self._h, y + h)
+
+        if ix1 > ix0 and iy1 > iy0:
+            ox0 = ix0 - x
+            oy0 = iy0 - y
+            ox1 = ox0 + (ix1 - ix0)
+            oy1 = oy0 + (iy1 - iy0)
+
+            out[oy0:oy1, ox0:ox1, :3] = self._rgb[iy0:iy1, ix0:ix1, :]
+            out[oy0:oy1, ox0:ox1, 3] = 255
+        return Image.fromarray(out, mode="RGBA")
+
+    def close(self):
+        pass
+
+
+
+
+
+
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
 
@@ -389,7 +464,7 @@ def main(cfg: DictConfig):
             filename = str(os.path.splitext(os.path.split(filepath)[1])[0])
             output_path = cfg.pickle_output_folder + cfg.pickle_output_corename + filename + outputext  
 
-            wsi_path = wsi_input_folder + filename + '.ndpi'
+            wsi_path = wsi_input_folder + filename + '.tif'
 
             G = build_graph_from_json(
                 json_path,

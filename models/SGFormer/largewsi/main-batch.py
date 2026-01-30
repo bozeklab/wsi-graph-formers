@@ -619,7 +619,7 @@ def main(cfg: DictConfig):
                 # avg_train_loss = total_loss / len(train_loader)
 
                 ### Periodic evaluatio and logging
-                if epoch % cfg.eval_step == 0:
+                if epoch % cfg.eval_step == 0 or epoch==(cfg.epochs-1):
 
                     if cfg.trainingtask == "binnodeclass_mask":
                         train_metric, train_loss = evaluate_binmasked_wloader(

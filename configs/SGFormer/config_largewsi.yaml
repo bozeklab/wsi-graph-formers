@@ -68,7 +68,7 @@ evalinfer: True
 
 
 ## cross-validation
-cv: False                              # create split for cross validation
+cv: True                              # create split for cross validation
 k_folds: 3                             # number of folds for cv
 # testfold: 0                          # id of the test fold
 

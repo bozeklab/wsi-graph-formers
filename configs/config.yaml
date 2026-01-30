@@ -3,16 +3,15 @@ defaults:
 
 ### all paths
 
-wsi_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-previous_steps/all_wsis/"
+wsi_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/healthy/"
 
-json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/previous_steps/hvn_output_graphprocessing_experiments/"
+json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/healthy/hvn_infer/json/"
 
-pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-graphs/experiments/r50_mo_4434-18/"
+pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/\
+pairs/healthy/graphs/mote/"
 
-conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-pyg_graphs/experiments/r50_mote_4434-18/"
+conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/\
+pairs/healthy/pygraphs/mote/"
 
 simplifiedgraph_folder: ""
 # simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
@@ -28,10 +27,10 @@ visualization_path: ""
 ### graphs
 
 # generate graph (pickle format)
-pickle_output_corename: "graph_r50_mo"
+pickle_output_corename: "graph_r50_mote"
 radius: 50
 timing: True
-with_texture: False
+with_texture: True  
 
 # graph simplification
 max_hops: 3
