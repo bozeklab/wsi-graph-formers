@@ -1,0 +1,7 @@
+tissue_types:
+  "Skin": 0
+
+nuclei_types:
+  "Background": 0
+  "Neoplastic": 1
+  "Epithelial": 2
