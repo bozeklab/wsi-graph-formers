@@ -6,8 +6,8 @@ import sys
 import torch
 from collections import Counter
 
-from models.SGFormer.largewsi.parse import parse_method
-from models.SGFormer.largewsi.dataset import load_dataset
+from models.large_wsigraphs.parse import parse_method
+from models.large_wsigraphs.dataset import load_dataset
 from dataset_tools.simplify_graph import subgraph_filtering
 
 import hydra
@@ -26,7 +26,7 @@ from torch_geometric.data import Batch , Data # for PyG v1.7
 
 
 
-@hydra.main(config_path="../../../configs/SGFormer", config_name="config_largewsi", version_base=None)
+@hydra.main(config_path="../../configs/SGFormer", config_name="config_largewsi", version_base=None)
 def infer(cfg: DictConfig):
 
     # Print hydra overrides

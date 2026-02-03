@@ -1,7 +1,7 @@
-from models.SGFormer.largewsi.gnns import *
-from models.SGFormer.largewsi.sgformer import *
-from models.SGFormer.largewsi.nodeformer import *
-from models.SGFormer.largewsi.difformer import * 
+from models.large_wsigraphs.gnns import *
+from models.large_wsigraphs.sgformer import *
+from models.large_wsigraphs.nodeformer import *
+from models.large_wsigraphs.difformer import * 
 
 
 def parse_method(cfg, c: int, d: int, device: torch.device):

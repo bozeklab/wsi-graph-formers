@@ -27,3 +27,5 @@ configs/SGFormer/experiment/
 
 # Others
 Data_General/
+models-arxiv/
+models/large_wsigraphs/run.sh

@@ -39,10 +39,11 @@ from omegaconf import DictConfig, OmegaConf
 from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
     append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_on_graph_list, \
     sanity_check_graph_list, induce_split_subgraph
+from utils.train_utils import fix_seed
  
 
 
-@hydra.main(config_path="../../../configs/SGFormer", config_name="config_largewsi", version_base=None)
+@hydra.main(config_path="../../configs/SGFormer", config_name="config_largewsi", version_base=None)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))  # print config nicely
 
