@@ -17,7 +17,7 @@ from torch_geometric.data import Data
 import torch
 
 # import models.SGFormer.largewsi.data_utils as data_utils
-from models.SGFormer.largewsi.dataset import load_dataset
+from models.large_wsigraphs.dataset import load_dataset
 # --> need dataset and data_utils for torch.load (if graph saved as NDdataset class)
 
 

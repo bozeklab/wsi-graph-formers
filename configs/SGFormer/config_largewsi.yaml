@@ -39,6 +39,7 @@ trainsubgraphs_batch_size: 1
 testsubgraphs_batch_size: 1
 metric: bacc                           # evaluation metric
 patient_csv: "patient_csv to provide"  # if we split according to patient information provide csv path
+wsigraph: False                        # default: True. True if graphs are coming from full WSI image, False if graphs is coming from image patch (before splitting) 
 
 zscore_normalization: False            # normalize with z-scoring the features and add weight for the class feature 
 celltype_asfeature: True               # explanation to add 
@@ -58,7 +59,7 @@ customload: True                       # if True, can load extra parameters spec
 multi_graph_infer: True
 infer_onsimplified : False 
 infer_graphtype: inferbinary           # [infer-multiclass, inferbinary]
-model_name: "binnodeclass_sgformerbin_subgraphs-onegraphskinwsi_run20250930-155029.pth"
+model_name: ""
 nbrclass_toinfer: 2
 pred_input_dir: /data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/pyg_graphs/experiments/debug_code/
 pred_input_name: graph_r50_4539-14_simplified_3-hops-ngbr.pt   # only for one graph infer

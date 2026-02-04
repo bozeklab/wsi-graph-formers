@@ -18,7 +18,7 @@ from omegaconf import DictConfig
 import hydra
 from configs.schema import GraphConfig
 
-from models.SGFormer.largewsi.dataset import NCDataset
+from models.large_wsigraphs.dataset import NCDataset
 
 
 

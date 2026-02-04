@@ -3,7 +3,7 @@ defaults:
 
 ### all paths
 
-wsi_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/healthy/"
+wsi_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/all/image/"
 
 json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/healthy/hvn_infer/json/"
 
@@ -54,16 +54,16 @@ baselinedata_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_da
 4434-18/CellViT_binaryformat_nothreshold"
 
 # wsijson_to_trainset.py 
-json_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-previous_steps/hvn_output_fullwsi/"
-output_baselineset: /data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/
+json_input_folder: /data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/all/json/
+output_baselineset: /data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/wsipatches/
 tmp_dir: /data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/tempcache/
 tile_size: 256
 no_bbox: False 
-generate_npz: False 
+generate_npz: True 
 generate_png: True
 png_level: 0 
 png_overwrite: False
+tilejson: True
 
 # concat pannuke6cformat and binaryformat 
 concat:

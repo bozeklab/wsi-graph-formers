@@ -200,7 +200,10 @@ def main(cfg: DictConfig):
                 tumor_wsis = set(wsi_to_patient.keys())  # only these WSIs are allowed
 
                 # tumor-only: discard all subgraphs from non-tumor WSIs
-                graph_list_tumor = [g for g in graph_list if get_graph_id(g) in tumor_wsis]
+                if cfg.wsigraph:
+                    graph_list_tumor = [g for g in graph_list if get_graph_id(g) in tumor_wsis]
+                else:
+                    graph_list_tumor = [g for g in graph_list if get_patchgraph_id(g) in tumor_wsis]
 
                 # display which WSIs and are discard in the terminal
                 all_wsis_meta = set(meta["WSI_sample"])
@@ -221,7 +224,10 @@ def main(cfg: DictConfig):
                 # group subgraphs by parent image (WSI)
                 groups = defaultdict(list)
                 for g in graph_list_epi:
-                    gid = get_graph_id(g)           
+                    if cfg.wsigraph: 
+                        gid = get_graph_id(g)
+                    else:
+                        gid = get_patchgraph_id(g)          
                     groups[gid].append(g)
 
                 # Group WSIs by patient, then split by patient
@@ -257,8 +263,12 @@ def main(cfg: DictConfig):
                         test_data.extend(groups[wsi])
 
                 # leakage check
-                train_wsis = {get_graph_id(x) for x in train_data}
-                test_wsis  = {get_graph_id(x) for x in test_data}
+                if cfg.wsigraph:
+                    train_wsis = {get_graph_id(x) for x in train_data}
+                    test_wsis  = {get_graph_id(x) for x in test_data}
+                else:
+                    train_wsis = {get_patchgraph_id(x) for x in train_data}
+                    test_wsis  = {get_patchgraph_id(x) for x in test_data}
                 assert train_wsis.isdisjoint(test_wsis)
 
                 train_pids_check = {wsi_to_patient[wsi] for wsi in train_wsis}

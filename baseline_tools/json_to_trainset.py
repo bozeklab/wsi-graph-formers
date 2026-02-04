@@ -16,6 +16,7 @@ from tqdm import tqdm
 import openslide  # provides slide.dimensions == (W, H) at level 0
 from collections import OrderedDict
 import logging
+import tifffile
 
 from omegaconf import DictConfig
 import hydra
@@ -291,6 +292,26 @@ def read_wsi_size_with_openslide(path: Path) -> Tuple[int, int]:
     return int(W), int(H)
 
 
+def read_flat_tiff_size(path: Path) -> Tuple[int, int]:
+    """
+    Read full-resolution image size (W, H) from a non-pyramidal TIFF file.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to a non-pyramidal .tif file.
+
+    Returns
+    -------
+    (int, int)
+        (W, H) pixel dimensions.
+    """
+    with tifffile.TiffFile(path) as tif:
+        page = tif.pages[0]  # single full-resolution image
+        H, W = page.shape[:2]
+
+    return int(W), int(H)
+
 
 
 def stage_a_bin_instances_to_tiles(
@@ -496,6 +517,7 @@ def stage_c_export_png_tiles(
 
     # Open the slide once
     slide = openslide.OpenSlide(str(wsi_path))
+
     try:
         # Validate the requested level
         if level < 0 or level >= slide.level_count:
@@ -556,6 +578,109 @@ def stage_c_export_png_tiles(
         slide.close()
 
 
+def stage_c_export_png_tiles_flat_tiff(
+    wsi_path: Path,
+    tiles_dir: Path,
+    tile: int,
+    slide_stem: str,
+    level: int = 0,
+    overwrite: bool = False,
+):
+    """
+    Export RGB PNG patches from a NON-PYRAMIDAL .tif at the exact (ty, tx) tiles for which
+    corresponding NPZ tiles (<stem>_tile_{ty}_{tx}.npz) already exist.
+
+    This is the flat-TIFF equivalent of the OpenSlide-based exporter.
+
+    Notes
+    -----
+    - Flat TIFFs have only one resolution level, so `level` must be 0.
+    - Uses tifffile.memmap() to avoid loading the entire TIFF into RAM.
+    """
+    tiles_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find NPZ tiles to mirror as PNGs
+    npz_files = sorted(tiles_dir.glob(f"{slide_stem}_tile_*_*.npz"))
+    if not npz_files:
+        log.warning(f"[{slide_stem}] No NPZ tiles found in {tiles_dir} — nothing to export as PNG.")
+        return
+
+    # Flat TIFF: enforce level=0
+    if level != 0:
+        raise ValueError(f"[{slide_stem}] Non-pyramidal TIFF supports only level=0 (got level={level}).")
+
+    # Memory-mapped access to the full-res TIFF (does not load full image)
+    try:
+        img = tifffile.memmap(wsi_path)  # shape: (H, W) or (H, W, C)
+    except Exception as e:
+        raise RuntimeError(f"[{slide_stem}] Failed to memmap TIFF {wsi_path}: {e}") from e
+
+    # Optional: basic sanity check
+    if img.ndim not in (2, 3):
+        raise ValueError(f"[{slide_stem}] Unexpected TIFF array shape: {img.shape}")
+
+    H, W = img.shape[:2]
+
+    for npz_path in tqdm(npz_files, desc=f"[{slide_stem}] exporting PNG tiles (flat TIFF)"):
+        # Parse ty, tx from "<stem>_tile_{ty}_{tx}.npz"
+        name = npz_path.stem
+        try:
+            _, _, ty_str, tx_str = name.split('_')
+        except ValueError:
+            parts = name.split('_')
+            if len(parts) < 4 or parts[-3] != "tile":
+                log.warning(f"[{slide_stem}] Unexpected tile filename format: {name}")
+                continue
+            ty_str, tx_str = parts[-2], parts[-1]
+
+        ty, tx = int(ty_str), int(tx_str)
+        x0, y0 = tx * tile, ty * tile
+
+        png_path = tiles_dir / f"{slide_stem}_tile_{ty}_{tx}.png"
+        if (not overwrite) and png_path.exists():
+            continue
+
+        # Bounds check (optional but helps avoid weird edge tiles)
+        x1, y1 = x0 + tile, y0 + tile
+        if x0 < 0 or y0 < 0 or x1 > W or y1 > H:
+            log.error(
+                f"[{slide_stem}] Tile (tx={tx}, ty={ty}) "
+                f"patch=({x0}:{x1}, {y0}:{y1}) img_size=({W}x{H})"
+            )
+            continue
+
+        # Extract patch (no scaling, since level=0 only)
+        patch = img[y0:y1, x0:x1]
+
+        # Convert to uint8 if needed (common for 16-bit TIFFs)
+        if patch.dtype != np.uint8:
+            # simple linear scaling to 0..255
+            maxv = np.iinfo(patch.dtype).max if np.issubdtype(patch.dtype, np.integer) else float(patch.max() or 1.0)
+            patch = (patch.astype(np.float32) / float(maxv) * 255.0).clip(0, 255).astype(np.uint8)
+
+        # Make RGBA to match your OpenSlide path
+        if patch.ndim == 2:
+            # grayscale -> RGB
+            patch = np.stack([patch, patch, patch], axis=-1)
+
+        if patch.shape[2] == 3:
+            alpha = np.full((tile, tile, 1), 255, dtype=np.uint8)
+            rgba = np.concatenate([patch, alpha], axis=2)
+        elif patch.shape[2] == 4:
+            rgba = patch
+        else:
+            log.error(f"[{slide_stem}] Unsupported channel count in patch: {patch.shape}")
+            continue
+
+        # Convert RGBA -> BGR for OpenCV, drop alpha
+        bgr = cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGR)
+
+        ok = cv2.imwrite(str(png_path), bgr)
+        if not ok:
+            log.error(f"[{slide_stem}] Failed to write {png_path}")
+
+
+
 
 def process_one_slide(
     json_file: Path,
@@ -564,6 +689,7 @@ def process_one_slide(
     tile_size: int,
     tmp_root: Path,
     no_bbox: bool,
+    tilejson: bool,
     generate_npz: bool = True,
     generate_png: bool = False,
     png_level: int = 0,
@@ -611,7 +737,10 @@ def process_one_slide(
             log.info(f"[skip] NPZ already exists for '{stem}' (found {sample_npz.relative_to(out_root)}).")
         else:
             # Read WSI (W, H) and run staging
-            W, H = read_wsi_size_with_openslide(wsi_path)
+            if tilejson:
+                W, H = read_flat_tiff_size(wsi_path)
+            else:
+                W, H = read_wsi_size_with_openslide(wsi_path)
             shards_dir = tmp_root / f"shards_{stem}"
             shards_dir.mkdir(parents=True, exist_ok=True)
 
@@ -645,20 +774,28 @@ def process_one_slide(
         if not npz_tiles:
             log.warning(f"[{stem}] No NPZ tiles found to mirror as PNGs in {slide_outdir}. Skipping PNG export.")
         else:
-            stage_c_export_png_tiles(
-                wsi_path=wsi_path,
-                tiles_dir=slide_outdir,
-                tile=tile_size,
-                slide_stem=stem,
-                level=png_level,
-                overwrite=png_overwrite,
-            )
-            did_anything = True
+            if tilejson:
+                stage_c_export_png_tiles_flat_tiff(
+                    wsi_path=wsi_path,
+                    tiles_dir=slide_outdir,
+                    tile=tile_size,
+                    slide_stem=stem,
+                    level=png_level,
+                    overwrite=png_overwrite,
+                )
+                did_anything = True
+            else:
+                stage_c_export_png_tiles(
+                    wsi_path=wsi_path,
+                    tiles_dir=slide_outdir,
+                    tile=tile_size,
+                    slide_stem=stem,
+                    level=png_level,
+                    overwrite=png_overwrite,
+                )
+                did_anything = True
 
     return True if (did_anything or sample_npz.exists() or sample_png.exists()) else False
-
-
-
 
 
 
@@ -676,6 +813,7 @@ def main(cfg: DictConfig):
 
     tile_size = int(cfg.tile_size)
     no_bbox   = bool(cfg.no_bbox)
+    tilejson = bool(cfg.tilejson)
 
     generate_npz = bool(cfg.generate_npz)
     generate_png = bool(cfg.generate_png)
@@ -705,6 +843,7 @@ def main(cfg: DictConfig):
             tile_size=tile_size,
             tmp_root=tmp_dir,
             no_bbox=no_bbox,
+            tilejson=tilejson,
             generate_npz=generate_npz,
             generate_png=generate_png,
             png_level=png_level,
