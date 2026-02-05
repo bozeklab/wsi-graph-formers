@@ -272,9 +272,10 @@ class DIFFormer_bin(nn.Module):
         for fc in self.fcs:
             fc.reset_parameters()
 
-    def forward(self, data, edge_weight=None):
-        x = data.graph['node_feat']
-        edge_index = data.graph['edge_index']
+    def forward(self, x, edge_index, edge_weight=None):
+        # x = data.graph['node_feat']
+        # edge_index = data.graph['edge_index']
+        # --> x and edge_index now directly called in forward
         layer_ = []
 
         # input MLP layer
@@ -301,20 +302,20 @@ class DIFFormer_bin(nn.Module):
         x_out = self.fcs[-1](x)  # [N, 1] logits
         return x_out
 
-    def get_attentions(self, x):
-        layer_, attentions = [], []
-        x = self.fcs[0](x)
-        if self.use_bn:
-            x = self.bns[0](x)
-        x = self.activation(x)
-        layer_.append(x)
-        for i, conv in enumerate(self.convs):
-            x, attn = conv(x, x, output_attn=True)
-            attentions.append(attn)
-            if self.residual:
-                x = self.alpha * x + (1 - self.alpha) * layer_[i]
-            if self.use_bn:
-                x = self.bns[i + 1](x)
-            layer_.append(x)
-        return torch.stack(attentions, dim=0)  # [layer num, N, N]
+    # def get_attentions(self, x):
+    #     layer_, attentions = [], []
+    #     x = self.fcs[0](x)
+    #     if self.use_bn:
+    #         x = self.bns[0](x)
+    #     x = self.activation(x)
+    #     layer_.append(x)
+    #     for i, conv in enumerate(self.convs):
+    #         x, attn = conv(x, x, output_attn=True)
+    #         attentions.append(attn)
+    #         if self.residual:
+    #             x = self.alpha * x + (1 - self.alpha) * layer_[i]
+    #         if self.use_bn:
+    #             x = self.bns[i + 1](x)
+    #         layer_.append(x)
+    #     return torch.stack(attentions, dim=0)  # [layer num, N, N]
 

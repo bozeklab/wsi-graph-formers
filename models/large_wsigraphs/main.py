@@ -353,7 +353,12 @@ def main(cfg: DictConfig):
                 optimizer.zero_grad()
 
                 train_start = time.time()
-                out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+                if cfg.method ==  'nodeformerbin':
+                    out, link_loss_ = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+                    # link_loss_ is typically a list/tuple of per-layer link log-likelihood terms
+                    link_reg = sum(link_loss_) / len(link_loss_)
+                else:
+                    out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
 
 
                 if cfg.trainingtask == "binnodeclass_mask":
@@ -363,6 +368,10 @@ def main(cfg: DictConfig):
                     train_idx_filtered = train_idx[train_mask[train_idx]]
                     target = binary_labels[train_idx_filtered]
                     loss = criterion(out[train_idx_filtered], target)
+
+                    if cfg.method ==  'nodeformerbin':
+                        # we update the loss with he regularization term
+                        loss = loss - cfg.lamda * link_reg
                 
                 else:
                     out = F.log_softmax(out, dim=1)
