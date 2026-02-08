@@ -280,7 +280,7 @@ def export_fold(
 # Core logic
 # ----------------------
 
-@hydra.main(config_path="../configs", config_name="config", version_base=None)
+@hydra.main(config_path="../../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     tiles_root = Path(to_absolute_path(str(cfg.hvn_format.tiles_root)))
     hvn_format_output = Path(to_absolute_path(str(cfg.hvn_format.hvn_format_output)))

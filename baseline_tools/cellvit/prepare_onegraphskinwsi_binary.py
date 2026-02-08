@@ -1,4 +1,8 @@
 """
+TO COPY ON CELLVIT CODE!
+
+
+
 Prepare dataset produced by `concat_binaryformat.py` for CellViT training.
 
 Supports two input mask layouts produced by your concatenation step:
