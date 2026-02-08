@@ -10,10 +10,11 @@ json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs
 pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/\
 pairs/healthy/graphs/mote/"
 
-conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/\
-pairs/healthy/pygraphs/mote/"
+conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/\
+all/pygraphs/mote/subgraphs-skinwsi/"
 
-simplifiedgraph_folder: ""
+simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/\
+all/simplified_pygraphs/mote/"
 # simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
 # simplified_pyg_graphs/experiments/r50_mote_4434-18/"
 
@@ -33,7 +34,7 @@ timing: True
 with_texture: True  
 
 # graph simplification
-max_hops: 3
+max_hops: 10
  
 # graph splitting
 split_from_simplified: True   
@@ -42,7 +43,7 @@ nbr_subgraphs: 100
 # graph visualization
 graphtype: dataset  #[dataset, binary, infer]
 backend: pyg  # [nx, pyg]
-max_nodes_display: 300000
+max_nodes_display: 800000
 figsize: [10, 10]
 
 
@@ -68,10 +69,10 @@ tilejson: True
 # concat pannuke6cformat and binaryformat 
 concat:
   tiles_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  4434-18/4434-18" 
+  wsipatches/folds/fold2" 
   out_root: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  4434-18/folds_binaryformat_nothreshold"   
-  folds: 3
+  wsipatches/folds_binaryformat_nt/fold2"   
+  folds: 1
   seed: 1337
   mask_key: type_map
   fold_index_starts_at_one: False
@@ -93,7 +94,7 @@ hvn_format:
   4434-18/4434-18"  
   hvn_format_output: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
   4434-18/hovernet_binaryformat_nothreshold"
-  folds: 3
+  folds: 1
   seed: 1337
   packed_dtype: int32
   # for binary format

@@ -35,8 +35,8 @@ from omegaconf import DictConfig, OmegaConf
 from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
     append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_on_graph_list, \
     sanity_check_graph_list 
-from utils.train_utils import cv_train_test_indices, normalize_wsi, get_graph_id, \
-    get_patchgraph_id, has_epithelial_nodes, fix_seed
+from utils.train_utils import cv_train_test_indices, cv_subgraphs_skinwsi_patient_split, \
+    normalize_wsi, get_graph_id, get_patchgraph_id, has_epithelial_nodes, fix_seed
 
 
 
@@ -152,16 +152,32 @@ def main(cfg: DictConfig):
         n = len(graph_list)
 
         if cfg.cv:
-            train_idx, test_idx = cv_train_test_indices(
-                n,
-                k_folds=cfg.k_folds,
-                testfold=testfold_idx,
-                seed=cfg.seed,
-            )
-            train_data = [graph_list[i] for i in train_idx]
-            test_data  = [graph_list[i] for i in test_idx]
-            val_data = [] # to test 
-            print("\n***Cross-validation with test fold {}***\n".format(testfold_idx))
+            if cfg.dataset == cfg.dataset == 'subgraphs-skinwsi':
+                train_data, test_data, val_data, info = cv_subgraphs_skinwsi_patient_split(
+                    graph_list,
+                    cfg.patient_csv,
+                    wsigraph=cfg.wsigraph,
+                    k_folds=cfg.k_folds,
+                    testfold=testfold_idx,
+                    seed=cfg.seed,
+                    normalize_wsi_fn=normalize_wsi,
+                    get_graph_id_fn=get_graph_id,
+                    get_patchgraph_id_fn=get_patchgraph_id,
+                    has_epithelial_nodes_fn=has_epithelial_nodes,
+                    verbose=True,
+                )
+                print(f"\n***Cross-validation (patient-level) with test fold {testfold_idx}***\n")
+            else:
+                train_idx, test_idx = cv_train_test_indices(
+                    n,
+                    k_folds=cfg.k_folds,
+                    testfold=testfold_idx,
+                    seed=cfg.seed,
+                )
+                train_data = [graph_list[i] for i in train_idx]
+                test_data  = [graph_list[i] for i in test_idx]
+                val_data = [] # to test 
+                print("\n***Cross-validation with test fold {}***\n".format(testfold_idx))
 
         else: 
             if cfg.dataset == 'skinwsi':
