@@ -30,7 +30,7 @@ def create_types_csv(folder_path, output_csv):
 
 
 
-@hydra.main(config_path="../configs", config_name="config", version_base=None)
+@hydra.main(config_path="../../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
 
     baselinedata_dir= cfg.baselinedata_dir

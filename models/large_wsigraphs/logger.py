@@ -24,14 +24,17 @@ class Logger(object):
             else:
                 ind = argmin
             print_str=f'Run {run + 1:02d}:' + \
-                f'Highest Train: {result[:, 0].max():.2f} ' + \
-                f'Highest Valid: {result[:, 1].max():.2f} ' + \
-                f'Highest Test: {result[:, 2].max():.2f}\n' + \
-                f'Chosen epoch: {ind+1} ' + \
                 f'Final Train: {result[ind, 0]:.2f} ' + \
                 f'Final Test: {result[ind, 2]:.2f}'
             print(print_str)
             self.test=result[ind, 2]
+
+            # f'Highest Train: {result[:, 0].max():.2f} ' + \
+            # f'Highest Valid: {result[:, 1].max():.2f} ' + \
+            # f'Highest Test: {result[:, 2].max():.2f}\n' + \
+            # f'Chosen epoch: {ind+1} ' + \
+            # % -> removed because 1) useless -at least for now-, 2) buggy
+
         else:
             best_results = []
             max_val_epoch=0

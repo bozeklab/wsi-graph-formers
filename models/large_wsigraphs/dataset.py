@@ -360,7 +360,7 @@ def load_skinwsi_onegraphdataset(data_dir,
     else:
         # relabel class from 0 to 5 instead of from 1 to 6 to match with the loss calculation
         # and to save checkpoint with correct shapes
-        for cellclass in range(1,7):  
+        for cellclass in range(0,7):  
             label[label == cellclass] = cellclass - 1
    
 
@@ -426,7 +426,7 @@ def load_skinwsi_dataset(data_dir,
             else:
                 # relabel class from 0 to 5 instead of from 1 to 6 to match with the loss calculation
                 # and to save checkpoint with correct shapes
-                for cellclass in range(1,7):  
+                for cellclass in range(0,7):  
                     label[label == cellclass] = cellclass - 1
            
 
@@ -482,7 +482,7 @@ def load_subgraphs_skinwsi_dataset(data_dir,
             # not sure a notumor mode make sense wiht these subgraphs 
             # relabel class from 0 to 5 instead of from 1 to 6 to match with the loss calculation
             # and to save checkpoint with correct shapes
-            for cellclass in range(1,7):  
+            for cellclass in range(0,7):  
                 label[label == cellclass] = cellclass - 1
            
 
