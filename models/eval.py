@@ -483,7 +483,7 @@ def eval_acc(true, pred):
 
 
 
-@hydra.main(config_path="../../configs/SGFormer", config_name="config_largewsi", version_base=None)
+@hydra.main(config_path="../configs/Graph_Transformers", config_name="config_largewsi", version_base=None)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))  # print config nicely
 
@@ -528,19 +528,6 @@ def main(cfg: DictConfig):
 
 if __name__=='__main__':
     main()
-
-    # x=torch.arange(4).unsqueeze(1)
-    # y=torch.Tensor([[3,0,0,0],
-    #                 [3,2,1.5,2.8],
-    #                 [0,0,2,1],
-    #                 [0,0,1,3]
-    #                 ])
-    # a, b=eval_acc(x, y)
-    # print(x)
-    # print(a,b)
-
-
-
 
 
 

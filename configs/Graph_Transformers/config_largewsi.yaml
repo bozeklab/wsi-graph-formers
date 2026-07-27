@@ -1,12 +1,12 @@
 # configfile.yaml
 defaults:
   - _self_
-  - experiments: tonameasarg
+  - experiments: tonameasarg          # possibility to add experiment config (see hydra docs)
 
 ## base configs
 dataset: ""
-data_dir: ../../Data_General/TrainingSets/GraphSet/training/
-sub_datasetname: r50_moonly_4434-18
+data_dir: 
+sub_datasetname: 
 model_dir: checkpoints/
 directed: False                        # set to not symmetrize adjacency
 protocol: semi                         # protocol for cora datasets, semi or supervised 
@@ -61,10 +61,10 @@ infer_onsimplified : False
 infer_graphtype: inferbinary           # [infer-multiclass, inferbinary]
 model_name: ""
 nbrclass_toinfer: 2
-pred_input_dir: /data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/pyg_graphs/experiments/debug_code/
-pred_input_name: graph_r50_4539-14_simplified_3-hops-ngbr.pt   # only for one graph infer
-pred_output_dir: /data/lsancere/Data_General/Predictions/input_wsigraph/full_dataset_notsimplified/
-pred_output_name: graph_r50_4539-14_simplified_3-hops-ngbr     # only for one graph infer 
+pred_input_dir: 
+pred_input_name:                       # only for one graph infer
+pred_output_dir: 
+pred_output_name:                      # only for one graph infer 
 evalinfer: True 
 
 

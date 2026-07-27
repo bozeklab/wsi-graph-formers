@@ -29,6 +29,7 @@ DATASETCOLORS = [
     (0.063, 0.020, 0.945), # 4 - Stroma (dark blue)
     (1.0, 0.0039, 0.0),    # 5 - Tumor (red)  
     (1.0, 0.690, 0.067)    # 6 - Non Tumor Epithelial  (orange)
+    # (1.0, 0.45, 0.0)     # 6 - Non Tumor Epithelial  (orange)
 ]
 
 

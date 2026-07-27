@@ -3,38 +3,32 @@ defaults:
 
 ### all paths
 
-wsi_input_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/all/image/"
+wsi_input_folder: 
 
-json_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/healthy/hvn_infer/json/"
+json_folder:
 
-pickle_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/\
-pairs/healthy/graphs/mote/"
+pickle_output_folder:
 
-conversion_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/\
-all/pygraphs/mote/subgraphs-skinwsi/"
+conversion_output_folder: 
 
-simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/\
-all/simplified_pygraphs/mote/"
-# simplifiedgraph_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-# simplified_pyg_graphs/experiments/r50_mote_4434-18/"
+simplifiedgraph_folder: 
 
-split_output_folder: "/data/lsancere/Data_General/TrainingSets/GraphSet/TumSeg_OriginalRes/\
-pyg_graphs/experiments/r50_mo_4434-18_splitted100/"
+split_output_folder: 
 
-visualization_path: ""
+visualization_path: 
 
 
 
 ### graphs
 
 # generate graph (pickle format)
-pickle_output_corename: "graph_r50_mote"
+pickle_output_corename: "graph_r50"
 radius: 50
 timing: True
 with_texture: True  
 
 # graph simplification
-max_hops: 10
+max_hops: 3
  
 # graph splitting
 split_from_simplified: True   
@@ -50,14 +44,12 @@ figsize: [10, 10]
 
 ### baseline training dataset 
 
-
-baselinedata_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-wsipatches/CellViT_binaryformat_nt/"
+baselinedata_dir: 
 
 # wsijson_to_trainset.py 
-json_input_folder: /data/lsancere/Data_General/TrainingSets/GraphSet/wsipatches/pairs/all/json/
-output_baselineset: /data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/wsipatches/
-tmp_dir: /data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/v1/tempcache/
+json_input_folder: 
+output_baselineset:
+tmp_dir: 
 tile_size: 256
 no_bbox: False 
 generate_npz: True 
@@ -68,10 +60,8 @@ tilejson: True
 
 # concat pannuke6cformat and binaryformat 
 concat:
-  tiles_dir: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  wsipatches/folds/fold2" 
-  out_root: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  wsipatches/folds_binaryformat_nt/fold2"   
+  tiles_dir: 
+  out_root: 
   folds: 1
   seed: 1337
   mask_key: type_map
@@ -82,18 +72,15 @@ concat:
   channel_map: {1: 4, 2: 5}
   ratio_threshold: 0
   stratify_by_major: True
-  # for 6 classes format 
+  # for 6 classes format - DISCONTINUED
   stratify: False
   pannuke: True
   class_map: [1,2,3,4,5,6]
 
-
 # generate hovernet format 
 hvn_format: 
-  tiles_root: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  wsipatches/folds/fold2"  
-  hvn_format_output: "/data/lsancere/Data_General/TrainingSets/GraphSet/baseline_dataset/\
-  wsipatches/hovernet_binaryformat_nt/fold2"
+  tiles_root: 
+  hvn_format_output: 
   folds: 1
   seed: 1337
   packed_dtype: int32

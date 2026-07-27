@@ -40,7 +40,7 @@ from utils.train_utils import cv_train_test_indices, cv_subgraphs_skinwsi_patien
 
 
 
-@hydra.main(config_path="../../configs/SGFormer", config_name="config_largewsi", version_base=None)
+@hydra.main(config_path="../configs/Graph_Transformers", config_name="config_largewsi", version_base=None)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))  # print config nicely
 

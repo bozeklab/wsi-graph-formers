@@ -6,7 +6,7 @@ import csv
 import json
 from os import path
 
-DATAPATH = '../../data/'
+DATAPATH = '../data/'
 
 def load_fb100(filename):
     # e.g. filename = Rutgers89 or Cornell5 or Wisconsin87 or Amherst41

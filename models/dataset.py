@@ -19,7 +19,7 @@ import os
 from torch_geometric.utils import subgraph, k_hop_subgraph, to_undirected
 import pickle as pkl
 
-from models.large_wsigraphs.data_utils import rand_train_test_idx, \
+from models.data_utils import rand_train_test_idx, \
     even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
 
 import json
@@ -1213,4 +1213,4 @@ def papers100M_sub(data_dir):
 
 if __name__=='__main__':
     # load_papers100M('../data')
-    papers100M_sub('../../data')
+    papers100M_sub('../data')

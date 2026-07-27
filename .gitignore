@@ -8,6 +8,11 @@
 # Setup
 **.egg-info
 
+# Dev
+configs/Graph_Transformers/dev/
+configs/Graph_Transformers/dev-experiments/
+configs/dev/
+
 # Results
 outputs/
 **/outputs/ 
