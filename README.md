@@ -22,7 +22,7 @@ To write
 Add the fact it is highly inspired from SGFormer repository!
 
 
-## Project sructure
+## Project structure
 
 To write 
 
