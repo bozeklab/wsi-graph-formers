@@ -1,8 +1,13 @@
 # Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers
 
+
 <div align="center">
+
 [Project presentation](#todo) • [Project structure](#project-structure) •  [Installation](#installation) •  [Datasets](#datasets) •   [Node classification](#node-classification) • [Generate cell graphs](#generate-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation) 
+
 </div>
+
+
 ## TO DO
 
 NOT TO KEEP
@@ -41,8 +46,9 @@ To write Lucas
 ## Generate cell graphs
 
 <p align="center">
-  <img src="docs/generate-cell-graphs.png" width="650">
+  <img src="docs/generate-cell-graphs.png">
 </p>
+
 
 ### Requirements
 
