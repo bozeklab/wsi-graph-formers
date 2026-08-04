@@ -337,7 +337,7 @@ def load_skinwsi_onegraphdataset(data_dir,
 
     #graphname="graph_r50_4539-14.pt"
     graphname = sub_datasetname
-    graph_path = data_dir + dataname +  '/' + graphname + '.pt'
+    graph_path = data_dir + '/' + graphname + '.pt'
     graph_dict = torch.load(graph_path)
 
     # Create NCDataset
@@ -451,18 +451,14 @@ def load_subgraphs_skinwsi_dataset(data_dir,
     seed=42, 
     train_prop=0.5, 
     valid_prop=0.25,
-    sub_datasetname=""
+    sub_datasetname="" 
     ):
 
     # will be very similar than skinwsi at least in the beginning
     # could evolve more during dev 
     subgraph_list = []
-    # for several graphs subgraphs: 
-    if dataname=="subgraphs-skinwsi":
-        data_folder = data_dir + dataname + '/'
-    # could be modified for one graph dataset:
-    elif dataname=="subgraphs-onegraphskinwsi":
-        data_folder = data_dir + 'subgraphs-onegraphskinwsi/'+ sub_datasetname + '/' 
+    # for several graphs subgraphs:
+    data_folder =  data_dir
 
     for file in os.listdir(data_folder):
         if file.endswith(".pt"):

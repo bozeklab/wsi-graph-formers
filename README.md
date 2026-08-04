@@ -2,8 +2,7 @@
 
 
 <div align="center">
-
-[Project presentation](#todo) • [Project structure](#project-structure) •  [Installation](#installation) •  [Datasets](#datasets) •   [Node classification](#node-classification) • [Generate cell graphs](#generate-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation) 
+[Project presentation](#todo) • [Project structure](#project-structure) •  [Installation](#installation) •  [Datasets](#datasets) •   [Node classification](#node-classification) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation) 
 
 </div>
 
@@ -16,13 +15,13 @@ This repository contains the code for ["Context-aware Skin Cancer Epithelial Cel
 NOT TO KEEP
 
 - once the installation works: remove setup.py, env_starting.yaml
-- once the installation works:seee if we rename and keep reauirements_starting.yaml or if we simply remove it 
+- once the installation works: see if we rename and keep reauirements_starting.yaml or if we simply remove it 
 
 ## Project presentation 
 
 To write 
 
-Add the fact it is highly inspired from SGFormer repository!
+Add the fact it is highly inspired from SGFormer repository and give link to it. 
 
 
 ## Project structure
@@ -32,8 +31,7 @@ To write
 
 ## Installation
 
-To write  Lucas
-
+To write Lucas
 
 ## Datasets
 
@@ -41,21 +39,106 @@ The datasets used in this work are publicly available on Zenodo following this l
 
 * [All datasets]  (link from zenodo)  [![DOI] (badgefromzenodo)] (link from zenodo) 
 
-## Node classification
+## Node classification 
 
-To write Lucas 
+### Dataset and eval output locations
 
+Create a folder `data` inside your local `wsi-graph-formers` folder and include  extracted folders `TILE-Graphs` and `WSI-Graph-100splits` as well as the file `TILE_patients_ID.csv` from the Zenodo dataset. 
 
-## Generate cell graphs
+### With WSI-Graph
+
+#### Scalable Graph Transformers eval
+
+To **evaluate scalable Graph Transformers models** with subgraph evaluation  method for binary node classification, on WSI-Graph dataset with 3-fold cross-validation, run the following command within this repository:
+
+```bash
+conda activate wsi-graph-formers
+python models/main-batch.py experiments=<chosen_experiments> data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ 
+```
+
+With <chosen_experiments> being one of the following:
+
+- WSI-Graphs_subgraphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+- WSI-Graphs_subgraphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+- WSI-Graphs_subgraphs_crossval_SGFormer ; to evaluate SGFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs  
+
+#### Classic GNNs eval
+
+To **evaluate other GNNs models** with subgraph evaluation  method for binary node classification, on WSI-Graph dataset with 3-fold cross-validation, run the following command within this repository:
+
+```bash
+conda activate wsi-graph-formers
+python models/main-batch.py experiments=WSI-Graphs_subgraphs_crossval_generalgnn data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ method=<chosen_method> 
+```
+
+With <chosen_method> being one of the following:
+
+-  gcnbin ; to evaluate GCN model with 3-fold cross-validation on WSI-Graph dataset using subgraphs 
+-  gatbin ; to evaluate GAT model with 3-fold cross-validation on WSI-Graph dataset using subgraphs 
+-  sgcbin ; to evaluate SGC model with 3-fold cross-validation on WSI-Graph dataset using subgraphs 
+-  sgc2bin ; to evaluate SGC-MLP model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+-  signbin ; to evaluate SIGN model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+
+#### Random nodes eval
+
+To evaluate with Random Nodes method follow the same logic and use experiments files from `configs/Graph_Transformers/experiments/` and data from `WSI-Graph` folder instead of ``WSI-Graph-100splits`` folder.
+
+### With TILE-Graphs
+
+#### Scalable Graph Transformers eval
+
+To **evaluate scalable Graph Transformers models** for binary node classification on TILE-Graphs dataset with 3-fold cross-validation, run the following command within this repository:
+
+```bash
+conda activate wsi-graph-formers
+python models/main-batch.py experiments=<chosen_experiments> data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv
+```
+
+With <chosen_experiments> being one of the following:
+
+- TILE-Graphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on TILE-Graphs dataset
+- TILE-Graphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on TILE-Graphs dataset
+- TILE-Graphs_crossval_SGFormer ; to evaluate SGFormer model with 3-fold cross-validation on TILE-Graphs dataset
+
+#### Classic GNNs eval
+
+To **evaluate other GNNs models** for binary node classification on TILE-Graphs dataset with 3-fold cross-validation, run the following command within this repository:
+
+```bash
+conda activate wsi-graph-formers
+python models/main-batch.py experiments=TILE-Graphs_crossval_generalgnn data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv  method=<chosen_method> 
+```
+
+With <chosen_method> being one of the following:
+
+-  gcnbin ; to evaluate GCN model with 3-fold cross-validation on TILE-Graphs dataset
+-  gatbin ; to evaluate GAT model with 3-fold cross-validation on TILE-Graphs dataset
+-  sgcbin ; to evaluate SGC model with 3-fold cross-validation on TILE-Graphs dataset 
+-  sgc2bin ; to evaluate SGC-MLP model with 3-fold cross-validation on TILE-Graphs dataset 
+-  signbin ; to evaluate SIGN model with 3-fold cross-validation on TILE-Graphs dataset
+
+### Save cross-validation result in a file rather than display in terminal
+
+Add to the previous commands:
+
+```bash
+ > eval.txt 2>&1 
+```
+
+To generate a text file eval.txt in current folder rather than generating evaluation in terminal. 
+
+## Generate your own cell graphs
 
 <p align="center">
   <img src="docs/generate-cell-graphs.png">
 </p>
-
-
 ### Requirements
 
-Need to run histo-miner before on the WSI / patch you want to predict from.  Either run SCC Segmenter if no tumor annotation exists or create your own annotations. 
+Need to run histo-miner inferences on the WSI / patch you want to generate graph from.  Either run SCC Segmenter if no tumor annotation exists or create your own annotations. 
+
+See TO FILL
+
+It will then generate the prediction as a json file.
 
 ### Build
 
@@ -64,10 +147,8 @@ Variable to update in the config:
 ```yaml
 ### all paths
 wsi_input_folder: "/path/to/data/"
-
 json_folder: "/path/to/data/"
-
-pickle_output_folder: "/path/to/data/"
+pickle_output_folder: "/path/to/output/folder/"
 ```
 
 Then:

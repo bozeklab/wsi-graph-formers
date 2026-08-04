@@ -1,0 +1,33 @@
+# @package _global_   
+method:  
+
+### IMPORTANT for wsipatch dataset 
+data_dir: toprovide_incmd
+patient_csv: toprovide_incmd
+
+trainingtask: binnodeclass_mask 
+save_model: True 
+metric: bacc 
+
+## Node Features
+zscore_normalization: True   
+celltype_asfeature: True  
+
+## Training setting
+epochs: 200 
+eval_step: 10 
+lr: 0.001 
+seed: 123
+
+## cross-validation
+cv: True                                
+k_folds: 3  
+
+## Device
+device: 0
+
+# EXPERIMENT configs
+# see file name
+
+## Experiment general
+ 

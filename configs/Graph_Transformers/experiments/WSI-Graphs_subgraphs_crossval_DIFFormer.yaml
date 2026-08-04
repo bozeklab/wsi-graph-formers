@@ -1,0 +1,39 @@
+# @package _global_   
+method: difformerbin 
+
+trainingtask: binnodeclass_mask 
+save_model: True 
+metric: bacc 
+
+## Node Features
+zscore_normalization: True   
+celltype_asfeature: True  
+
+## Training setting
+epochs: 200 
+eval_step: 10 
+lr: 0.01 
+seed: 123
+weight_decay: 0.0
+
+## cross-validation
+cv: True                                
+k_folds: 3  
+
+## DifFormer settings
+hidden_channels: 64 
+num_layers: 3 
+num_heads: 1   
+use_graph: True  
+use_bn : True  
+use_residual: True
+alpha: 0.5  
+
+## Device
+device: 0
+
+# EXPERIMENT configs
+# see file name
+
+## Experiment general
+ 

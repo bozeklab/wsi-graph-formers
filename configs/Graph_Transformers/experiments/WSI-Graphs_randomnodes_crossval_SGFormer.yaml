@@ -1,0 +1,48 @@
+# @package _global_   
+method: sgformerbin 
+sub_datasetname: wsigraph-simplified-3-max-hops
+
+trainingtask: binnodeclass_mask 
+save_model: True 
+metric: bacc 
+
+## Node Features
+zscore_normalization: True   
+celltype_asfeature: True  
+
+## Training setting
+epochs: 1000 
+eval_step: 50 
+lr: 0.001 
+seed: 123
+
+## cross-validation
+cv: True                               
+k_folds: 3  
+
+## SGFormer settings
+hidden_channels: 256 
+use_graph: True 
+graph_weight: 0.5 
+gnn_num_layers: 3 
+gnn_dropout: 0.5 
+gnn_weight_decay: 0.0 
+gnn_use_residual: True 
+gnn_use_weight: True 
+gnn_use_bn: True 
+gnn_use_act: True 
+trans_num_layers: 1 
+trans_dropout: 0.5 
+trans_weight_decay: 0.0 
+trans_use_residual: True 
+trans_use_weight: True 
+trans_use_bn: True 
+
+## Device
+device: 0
+
+# EXPERIMENT configs
+# see file name
+
+## Experiment general
+ 

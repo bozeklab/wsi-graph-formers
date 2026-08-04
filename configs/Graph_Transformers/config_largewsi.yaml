@@ -4,9 +4,9 @@ defaults:
   - experiments: tonameasarg          # possibility to add experiment config (see hydra docs)
 
 ## base configs
-dataset: ""
-data_dir: 
-sub_datasetname: 
+dataset: "" 
+data_dir:         
+sub_datasetname:                       # only for random node evaluation with one graph dataset: name of the graph.pt file
 model_dir: checkpoints/
 directed: False                        # set to not symmetrize adjacency
 protocol: semi                         # protocol for cora datasets, semi or supervised 

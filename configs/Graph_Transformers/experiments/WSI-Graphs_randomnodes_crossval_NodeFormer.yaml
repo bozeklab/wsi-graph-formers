@@ -1,0 +1,45 @@
+# @package _global_   
+method:  
+sub_datasetname: wsigraph-simplified-3-max-hops
+
+trainingtask: binnodeclass_mask 
+save_model: True 
+metric: bacc 
+
+## Node Features
+zscore_normalization: True   
+celltype_asfeature: True  
+
+## Training setting
+epochs: 200 
+eval_step: 10 
+lr: 0.001 
+seed: 123
+weight_decay: 0.0
+
+## cross-validation
+cv: True                                
+k_folds: 3  
+
+## NodeFormer settings
+hidden_channels: 64 
+num_layers: 3 
+num_heads: 1   
+lamda: 0.1                            
+nb_random_features: 50                
+nb_gumbel_sample: 5                    
+rb_order: 1                            
+rb_trans: identity   
+use_bn: True
+use_residual: True
+use_act: True 
+use_jk: True 
+
+## Device
+device: 0
+
+# EXPERIMENT configs
+# see file name
+
+## Experiment general
+ 

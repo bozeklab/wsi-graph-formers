@@ -34,6 +34,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import hydra
+from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
 from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
@@ -45,6 +46,12 @@ from utils.train_utils import fix_seed
 
 @hydra.main(config_path="../configs/Graph_Transformers", config_name="config_largewsi", version_base=None)
 def main(cfg: DictConfig):
+
+    # resolve user-supplied paths against the launch dir, not Hydra's output dir
+    for key in ("data_dir", "patient_csv"):
+        if cfg.get(key) is not None:
+            cfg[key] = to_absolute_path(cfg[key])
+            
     print(OmegaConf.to_yaml(cfg))  # print config nicely
 
     # we don't want to extract the nodestype from the cofig all along but only once as it can
