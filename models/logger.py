@@ -23,10 +23,11 @@ class Logger(object):
                 ind = argmax
             else:
                 ind = argmin
-            print_str=f'Run {run + 1:02d}:' + \
-                f'Final Train: {result[ind, 0]:.2f} ' + \
-                f'Final Test: {result[ind, 2]:.2f}'
-            print(print_str)
+            # print_str=f'Run {run + 1:02d}:' + \
+            #     f'Final Train: {result[ind, 0]:.2f} ' + \
+            #     f'Final Test: {result[ind, 2]:.2f}'
+            # print(print_str)
+            # - broken log so let commented 
             self.test=result[ind, 2]
 
             # f'Highest Train: {result[:, 0].max():.2f} ' + \

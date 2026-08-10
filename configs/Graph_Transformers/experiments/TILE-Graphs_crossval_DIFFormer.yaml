@@ -1,4 +1,5 @@
-# @package _global_   
+# @package _global_  
+dataset: subgraphs-skinwsi   # name of TILE-Graphs in the code
 method: difformerbin   
 
 ### IMPORTANT for wsipatch dataset 

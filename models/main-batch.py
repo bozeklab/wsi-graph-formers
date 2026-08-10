@@ -65,7 +65,8 @@ def main(cfg: DictConfig):
                 nodestype, 
                 cfg.train_prop, 
                 cfg.valid_prop,
-                cfg.sub_datasetname
+                cfg.sub_datasetname,
+                cfg.order_file
                 )
 
     elif cfg.dataset == 'subgraphs-skinwsi':
@@ -77,7 +78,8 @@ def main(cfg: DictConfig):
                 nodestype, 
                 cfg.train_prop, 
                 cfg.valid_prop,
-                cfg.sub_datasetname
+                cfg.sub_datasetname,
+                cfg.order_file
                 )
 
     elif cfg.dataset == 'subgraphs-onegraphskinwsi':
@@ -89,7 +91,8 @@ def main(cfg: DictConfig):
                 nodestype, 
                 cfg.train_prop, 
                 cfg.valid_prop,
-                cfg.sub_datasetname
+                cfg.sub_datasetname, 
+                cfg.order_file
                 )
 
 
@@ -100,7 +103,8 @@ def main(cfg: DictConfig):
 
     else:
         raise ValueError(
-            "Only skinwsi dataset and subgraphs skinwsi datasets can be used to run this code")
+            "Only skinwsi dataset (such as WSI-Graph) and subgraphs skinwsi datasets (such as TILE-Graphs)"
+             "can be used to run this code")
 
 
 
@@ -214,12 +218,12 @@ def main(cfg: DictConfig):
 
                 # Load metadata and keep ONLY tumor images 
                 meta = pd.read_csv(cfg.patient_csv, sep=";")
-                meta["WSI_sample"] = meta["WSI_sample"].map(normalize_wsi)
+                meta["Tile graphs"] = meta["Tile graphs"].map(normalize_wsi)
                 meta["Tumor"] = meta["Tumor"].astype(str).str.strip()
 
                 tumor_meta = meta[meta["Tumor"].str.lower().eq("yes")].copy()
 
-                wsi_to_patient = dict(zip(tumor_meta["WSI_sample"], tumor_meta["Patient_ID"]))
+                wsi_to_patient = dict(zip(tumor_meta["Tile graphs"], tumor_meta["Patient_ID"]))
                 tumor_wsis = set(wsi_to_patient.keys())  # only these WSIs are allowed
 
                 # tumor-only: discard all subgraphs from non-tumor WSIs
@@ -229,8 +233,8 @@ def main(cfg: DictConfig):
                     graph_list_tumor = [g for g in graph_list if get_patchgraph_id(g) in tumor_wsis]
 
                 # display which WSIs and are discard in the terminal
-                all_wsis_meta = set(meta["WSI_sample"])
-                kept_wsis_meta = set(tumor_meta["WSI_sample"])
+                all_wsis_meta = set(meta["Tile graphs"])
+                kept_wsis_meta = set(tumor_meta["Tile graphs"])
                 discarded_wsis_by_tumor = sorted(all_wsis_meta - kept_wsis_meta)
 
                 print(f"Discarded WSIs (Tumor != Yes): {len(discarded_wsis_by_tumor)}")
@@ -254,7 +258,7 @@ def main(cfg: DictConfig):
                     groups[gid].append(g)
 
                 # Group WSIs by patient, then split by patient
-                # patient_id -> list of WSI_sample ids
+                # patient_id -> list of Tile graphs ids
                 patients = defaultdict(list)  
                 for wsi in groups.keys():
                     pid = wsi_to_patient[wsi]     

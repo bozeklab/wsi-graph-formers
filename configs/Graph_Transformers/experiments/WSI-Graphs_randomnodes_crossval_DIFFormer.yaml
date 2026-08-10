@@ -1,4 +1,5 @@
 # @package _global_   
+dataset: onegraphskinwsi   # name of WSI-Graph (without splits) in the code
 method: difformerbin 
 sub_datasetname: wsigraph-simplified-3-max-hops
 

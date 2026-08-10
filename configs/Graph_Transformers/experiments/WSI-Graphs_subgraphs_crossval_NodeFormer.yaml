@@ -1,4 +1,5 @@
 # @package _global_   
+dataset: subgraphs-onegraphskinwsi    # name for WSI-Graphs-splits in the code 
 method: nodeformerbin 
 
 trainingtask: binnodeclass_mask 

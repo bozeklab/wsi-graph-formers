@@ -10,7 +10,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from utils.graph_utils import mask_celltype_onehot_cols
-from data_utils import eval_acc, eval_rocauc, eval_f1, \
+from models.data_utils import eval_acc, eval_rocauc, eval_f1, \
     eval_binary_acc, eval_binary_rocauc, eval_binary_f1, eval_binary_bacc, eval_bacc
 from dataset import load_dataset
 from tqdm import tqdm

@@ -21,7 +21,8 @@ results/
 predictions/
 **/predictions/
 
-# Saved models
+# Saved models & data
+data/
 checkpoints/
 **/checkpoint/
 *.pkl

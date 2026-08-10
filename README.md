@@ -12,10 +12,13 @@ This repository contains the code for ["Context-aware Skin Cancer Epithelial Cel
 
 ## TO DO
 
-NOT TO KEEP
+- add pyproject.toml at the project rroot that the pip install -e . indeed wwork
 
-- once the installation works: remove setup.py, env_starting.yaml
-- once the installation works: see if we rename and keep reauirements_starting.yaml or if we simply remove it 
+- remove the code generating the line after epoch 199 because it is simply wrong
+
+  Epoch: 199, Train Loss: 0.1789, Train: 92.01%, Val Loss: 0.0000, Val:  0.00%, Test: 86.32%
+
+  Run 01:Final Train: 50.00 Final Test: 50.00
 
 ## Project presentation 
 
@@ -26,12 +29,44 @@ Add the fact it is highly inspired from SGFormer repository and give link to it.
 
 ## Project structure
 
-To write 
+To write (with tree command and then # explanation)
 
 
-## Installation
+## Installation 
+### Prerequisites
 
-To write Lucas
+- Linux x86-64
+- conda or miniconda
+- For GPU use:
+  - An NVIDIA driver supporting CUDA 11.1 (450.80.02+). No CUDA toolkit is required; the torch wheels bundle their own runtime.
+  - A GPU of compute capability 8.6 or lower (Ampere or older: A100, V100, RTX 30-series, etc.). Torch 1.9 will be installed and ships no kernels for Hopper (H100, sm_90) or newer.
+
+Python 3.8, torch 1.9.0+cu111 and all other packages are installed by
+`environment.yaml`.
+
+### Installation commands
+
+To install simply run:
+
+```bash
+conda env create -f environment.yaml
+conda activate wsi-graph-formers
+pip install -e .
+```
+
+To Verify:
+
+```bash
+python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+# expected: 1.9.0+cu111 True   (on a GPU node)
+```
+
+### Tested on
+
+Linux x86-64.
+GPU: CUDA 11.1 on an NVIDIA A100 (sm_80) — imports and CUDA ops.
+CPU-only: imports only, on a GPU-less node.
+Other platforms have not been tested.
 
 ## Datasets
 
@@ -41,9 +76,16 @@ The datasets used in this work are publicly available on Zenodo following this l
 
 ## Node classification 
 
-### Dataset and eval output locations
+### Dataset and eval output locations TO UPDATE ONCE DATASET IT PUBLISHED 
 
 Create a folder `data` inside your local `wsi-graph-formers` folder and include  extracted folders `TILE-Graphs` and `WSI-Graph-100splits` as well as the file `TILE_patients_ID.csv` from the Zenodo dataset. 
+
+Remove all unnecessary MAC OS files (needed!):
+```bash
+cd data
+find . -type f \( -name '._*' -o -name '.DS_Store' \) -delete
+cd ..
+```
 
 ### With WSI-Graph
 

@@ -21,7 +21,7 @@ import pickle as pkl
 
 from models.data_utils import rand_train_test_idx, \
     even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
-
+from models.order_utils import ordered_files
 import json
 import csv
 
@@ -159,7 +159,8 @@ def load_dataset_extra(data_dir,
     nodestype,
     train_prop,
     valid_prop,
-    sub_dataset
+    sub_dataset,
+    order_file=None,
     ):
     """ Loader for NCDataset with extra arguments 
         Returns NCDataset 
@@ -188,7 +189,8 @@ def load_dataset_extra(data_dir,
             dataname, 
             train_prop=train_prop, 
             valid_prop=valid_prop, 
-            sub_datasetname=sub_dataset
+            sub_datasetname=sub_dataset,
+            order_file=order_file,
             )
 
 
@@ -451,47 +453,44 @@ def load_subgraphs_skinwsi_dataset(data_dir,
     seed=42, 
     train_prop=0.5, 
     valid_prop=0.25,
-    sub_datasetname="" 
+    sub_datasetname="",
+    order_file=None
     ):
 
-    # will be very similar than skinwsi at least in the beginning
-    # could evolve more during dev 
     subgraph_list = []
-    # for several graphs subgraphs:
-    data_folder =  data_dir
+    data_folder = data_dir
 
-    for file in os.listdir(data_folder):
-        if file.endswith(".pt"):
+    for file in ordered_files(data_folder, order_file):
 
-            graph_dict = torch.load(os.path.join(data_folder, file))
-            graphname = os.path.split(file)[1]
+        graph_dict = torch.load(os.path.join(data_folder, file))
+        graphname = os.path.split(file)[1]
 
-             # Create NCDataset
-            onegraphdataset = NCDataset(dataname)
-            
-            edge_index = graph_dict['edge_index']
-            node_feat = graph_dict['x']
-            label = graph_dict['y']
-            num_nodes = node_feat.shape[0]
+         # Create NCDataset
+        onegraphdataset = NCDataset(dataname)
+        
+        edge_index = graph_dict['edge_index']
+        node_feat = graph_dict['x']
+        label = graph_dict['y']
+        num_nodes = node_feat.shape[0]
 
-            # So far we keep only the all classes mode
-            # not sure a notumor mode make sense wiht these subgraphs 
-            # relabel class from 0 to 5 instead of from 1 to 6 to match with the loss calculation
-            # and to save checkpoint with correct shapes
-            for cellclass in range(0,7):  
-                label[label == cellclass] = cellclass - 1
-           
+        # So far we keep only the all classes mode
+        # not sure a notumor mode make sense wiht these subgraphs 
+        # relabel class from 0 to 5 instead of from 1 to 6 to match with the loss calculation
+        # and to save checkpoint with correct shapes
+        for cellclass in range(0,7):  
+            label[label == cellclass] = cellclass - 1
+       
 
-            onegraphdataset.graph = {
-                'edge_index': edge_index,
-                'node_feat': node_feat,
-                'edge_feat': None,
-                'num_nodes': num_nodes
-            }
-            onegraphdataset.label = label
-            onegraphdataset.name = graphname
+        onegraphdataset.graph = {
+            'edge_index': edge_index,
+            'node_feat': node_feat,
+            'edge_feat': None,
+            'num_nodes': num_nodes
+        }
+        onegraphdataset.label = label
+        onegraphdataset.name = graphname
 
-            subgraph_list.append(onegraphdataset)
+        subgraph_list.append(onegraphdataset)
 
 
     return subgraph_list

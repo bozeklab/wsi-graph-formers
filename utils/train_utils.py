@@ -52,11 +52,11 @@ def cv_subgraphs_skinwsi_patient_split(
 
     # ---- load metadata, keep tumor WSIs only
     meta = pd.read_csv(patient_csv, sep=";")
-    meta["WSI_sample"] = meta["WSI_sample"].map(normalize_wsi_fn)
+    meta["Tile graphs"] = meta["Tile graphs"].map(normalize_wsi_fn)
     meta["Tumor"] = meta["Tumor"].astype(str).str.strip()
 
     tumor_meta = meta[meta["Tumor"].str.lower().eq("yes")].copy()
-    wsi_to_patient = dict(zip(tumor_meta["WSI_sample"], tumor_meta["Patient_ID"]))
+    wsi_to_patient = dict(zip(tumor_meta["Tile graphs"], tumor_meta["Patient_ID"]))
     tumor_wsis = set(wsi_to_patient.keys())
 
     # ---- filter graphs to tumor WSIs only
@@ -133,8 +133,8 @@ def cv_subgraphs_skinwsi_patient_split(
 
     if verbose:
         # show which WSIs were discarded due to Tumor != Yes
-        all_wsis_meta = set(meta["WSI_sample"])
-        kept_wsis_meta = set(tumor_meta["WSI_sample"])
+        all_wsis_meta = set(meta["Tile graphs"])
+        kept_wsis_meta = set(tumor_meta["Tile graphs"])
         discarded_wsis_by_tumor = sorted(all_wsis_meta - kept_wsis_meta)
 
         print(f"\nDiscarded WSIs (Tumor != Yes): {len(discarded_wsis_by_tumor)}")
