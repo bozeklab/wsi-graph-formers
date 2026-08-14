@@ -4,7 +4,7 @@ import re
 import random
 import torch
 from collections import defaultdict
-
+from pathlib import Path
 
 
 
@@ -52,11 +52,11 @@ def cv_subgraphs_skinwsi_patient_split(
 
     # ---- load metadata, keep tumor WSIs only
     meta = pd.read_csv(patient_csv, sep=";")
-    meta["Tile graphs"] = meta["Tile graphs"].map(normalize_wsi_fn)
+    meta["Tile_graphs"] = meta["Tile_graphs"].map(normalize_wsi_fn)
     meta["Tumor"] = meta["Tumor"].astype(str).str.strip()
 
     tumor_meta = meta[meta["Tumor"].str.lower().eq("yes")].copy()
-    wsi_to_patient = dict(zip(tumor_meta["Tile graphs"], tumor_meta["Patient_ID"]))
+    wsi_to_patient = dict(zip(tumor_meta["Tile_graphs"], tumor_meta["Patient_ID"]))
     tumor_wsis = set(wsi_to_patient.keys())
 
     # ---- filter graphs to tumor WSIs only
@@ -133,8 +133,8 @@ def cv_subgraphs_skinwsi_patient_split(
 
     if verbose:
         # show which WSIs were discarded due to Tumor != Yes
-        all_wsis_meta = set(meta["Tile graphs"])
-        kept_wsis_meta = set(tumor_meta["Tile graphs"])
+        all_wsis_meta = set(meta["Tile_graphs"])
+        kept_wsis_meta = set(tumor_meta["Tile_graphs"])
         discarded_wsis_by_tumor = sorted(all_wsis_meta - kept_wsis_meta)
 
         print(f"\nDiscarded WSIs (Tumor != Yes): {len(discarded_wsis_by_tumor)}")
@@ -193,26 +193,27 @@ def normalize_wsi(s: str) -> str:
 
 # depending on the naming of the graphs, get_graph_id or get_patchgraph_id 
 def get_graph_id(item) -> str:
-    graphname = item.name
-    # path = _extract_path_from_item(item)
 
-    base = graphname.split("_simplified_3-hops-ngbr_")[0]
-    if base.startswith("subgraph_graph_r50_"):
-        base = base[len("subgraph_graph_r50_"):]
-    return normalize_wsi(base)
+    # "wsigraph_93_4.pt" -> "wsigraph_93"
+    stem = Path(item.name).stem          # drops ".pt"
+    return stem.rsplit("_", 1)[0]        # drops the trailing "_4"
+
+    # OLD reference:
+    # graphname = item.name
+    # # path = _extract_path_from_item(item)
+
+    # base = graphname.split("_simplified_3-hops-ngbr_")[0]
+    # if base.startswith("subgraph_graph_r50_"):
+    #     base = base[len("subgraph_graph_r50_"):]
+    # return normalize_wsi(base)
+    
+
 
 # depending on the naming of the graphs, get_graph_id or get_patchgraph_id 
 def get_patchgraph_id(item) -> str:
-    graphname = item.name
-    # path = _extract_path_from_item(item)
-    # patches odd counrts - tumor
-    # patches even counts - healthy 
-
-    base = graphname.split("_nosimplification_")[0]
-    if base.startswith("graph_r50_mote_"):
-        base = base[len("graph_r50_mote_"):]
-    return normalize_wsi(base)
-
+    # "tilegraph_93_4.pt" -> "tilegraph_93"
+    stem = Path(item.name).stem          # drops ".pt"
+    return stem.rsplit("_", 1)[0]        # drops the trailing "_4"
 
 
 ### function to check epithelial nodes 

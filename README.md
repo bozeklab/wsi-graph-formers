@@ -3,7 +3,6 @@
 
 <div align="center">
 [Project presentation](#todo) • [Project structure](#project-structure) •  [Installation](#installation) •  [Datasets](#datasets) •   [Node classification](#node-classification) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation) 
-
 </div>
 
 <br>
@@ -12,7 +11,11 @@ This repository contains the code for ["Context-aware Skin Cancer Epithelial Cel
 
 ## TO DO
 
-- add pyproject.toml at the project rroot that the pip install -e . indeed wwork
+- add pyproject.toml at the project root that the pip install -e . indeed work BEFORE IT IS DONE run
+
+```bash
+export PYTHONPATH="~/Ada_Codes/wsi-graph-formers-archive/src:$PYTHONPATH"
+```
 
 - remove the code generating the line after epoch 199 because it is simply wrong
 

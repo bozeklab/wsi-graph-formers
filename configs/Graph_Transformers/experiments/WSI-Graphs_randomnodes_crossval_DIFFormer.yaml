@@ -21,6 +21,7 @@ weight_decay: 0.0
 ## cross-validation
 cv: True                                
 k_folds: 3  
+order_file: configs/orders/order_WSI-Graph-100splits_3-max-hops-simplification.txt
 
 ## DifFormer settings
 hidden_channels: 64 
