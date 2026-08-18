@@ -218,6 +218,7 @@ Random nodes evaluation follows the same logic with `experiments_subgraphs_cross
 <p align="center">
   <img src="docs/generate-cell-graphs.png">
 </p>
+
 ### Requirements
 
 Need to run histo-miner inferences on the WSI / patch you want to generate graph from.  Either run SCC Segmenter if no tumor annotation exists or create your own annotations. 
