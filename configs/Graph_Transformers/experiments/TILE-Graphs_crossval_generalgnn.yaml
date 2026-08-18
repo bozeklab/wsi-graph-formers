@@ -27,9 +27,3 @@ order_file: configs/orders/order_TILE-Graphs.txt
 
 ## Device
 device: 0
-
-# EXPERIMENT configs
-# see file name
-
-## Experiment general
- 

@@ -7,12 +7,12 @@ save_model: True
 metric: bacc 
 
 ## Node Features
-zscore_normalization: True   
-celltype_asfeature: True  
+zscore_normalization: toprovide_incmd   
+celltype_asfeature: toprovide_incmd  
 
 ## Training setting
-epochs: 200 
-eval_step: 10 
+epochs: 1000 
+eval_step: 50 
 lr: 0.001 
 seed: 123
 

@@ -38,9 +38,3 @@ use_jk: True
 
 ## Device
 device: 0
-
-# EXPERIMENT configs
-# see file name
-
-## Experiment general
- 

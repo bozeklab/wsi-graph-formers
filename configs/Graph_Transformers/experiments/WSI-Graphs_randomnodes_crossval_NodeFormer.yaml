@@ -21,7 +21,6 @@ weight_decay: 0.0
 ## cross-validation
 cv: True                                
 k_folds: 3  
-order_file: configs/orders/order_WSI-Graph-100splits_3-max-hops-simplification.txt
 
 ## NodeFormer settings
 hidden_channels: 64 
@@ -39,9 +38,3 @@ use_jk: True
 
 ## Device
 device: 0
-
-# EXPERIMENT configs
-# see file name
-
-## Experiment general
- 

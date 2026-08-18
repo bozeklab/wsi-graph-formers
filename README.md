@@ -1,8 +1,8 @@
 # Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers
 
-
 <div align="center">
-[Project presentation](#todo) • [Project structure](#project-structure) •  [Installation](#installation) •  [Datasets](#datasets) •   [Node classification](#node-classification) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation) 
+[Project presentation](#todo) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation)
+
 </div>
 
 <br>
@@ -17,11 +17,7 @@ This repository contains the code for ["Context-aware Skin Cancer Epithelial Cel
 export PYTHONPATH="~/Ada_Codes/wsi-graph-formers-archive/src:$PYTHONPATH"
 ```
 
-- remove the code generating the line after epoch 199 because it is simply wrong
-
-  Epoch: 199, Train Loss: 0.1789, Train: 92.01%, Val Loss: 0.0000, Val:  0.00%, Test: 86.32%
-
-  Run 01:Final Train: 50.00 Final Test: 50.00
+- remove SGFormer readme in models no?
 
 ## Project presentation 
 
@@ -79,11 +75,17 @@ The datasets used in this work are publicly available on Zenodo following this l
 
 ## Node classification 
 
-### Dataset and eval output locations TO UPDATE ONCE DATASET IT PUBLISHED 
+Reproduce the node classification cross-validations from the paper. 
 
-Create a folder `data` inside your local `wsi-graph-formers` folder and include  extracted folders `TILE-Graphs` and `WSI-Graph-100splits` as well as the file `TILE_patients_ID.csv` from the Zenodo dataset. 
+### Downloading datasets 
 
-Remove all unnecessary MAC OS files (needed!):
+Run:
+
+TO WRITE AFTER DATASET RELEASE 
+
+This will create a folder `data` inside your local `wsi-graph-formers` folder and include  extracted folders `TILE-Graphs` and `WSI-Graph-100splits` as well as the file `TILE_patients_ID.csv` from the Zenodo dataset. 
+
+Remove all unnecessary MAC OS files (step needed):
 ```bash
 cd data
 find . -type f \( -name '._*' -o -name '.DS_Store' \) -delete
@@ -171,6 +173,42 @@ Add to the previous commands:
 ```
 
 To generate a text file eval.txt in current folder rather than generating evaluation in terminal. 
+
+## Ablation study
+
+To reproduce feature ablation study experiments from the paper.
+
+### Downloading corresponding data
+
+Run:
+
+TO WRITE AFTER DATASET RELEASE 
+
+This will create a folder `data` inside your local `wsi-graph-formers` folder (if not already done) and include  extracted folders `experiments` folder from the Zenodo dataset. 
+
+### Feature ablation study
+
+To reproduce feature ablation study for WSI-Graph **containing texture features** within each node:
+
+```bash
+conda activate wsi-graph-formers
+python models/main-batch.py experiments=experiments_subgraphs_crossval_feature_ablation data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/
+zscore_normalization=<True/False> celltype_asfeature=<True/False>
+```
+
+Choose False or True depending on which experiement (line of the table) you want to reproduce. To reproduce everything run all configurations.
+
+To reproduce feature ablation study for WSI-Graph **without texture feature** within nodes:
+
+```bash
+conda activate wsi-graph-formers
+python models/main-batch.py experiments=experiments_subgraphs_crossval_feature_ablation data_dir=data/experiments/feature-ablations/subgraphs/
+zscore_normalization=<True/False> celltype_asfeature=<True/False>
+```
+
+Choose False or True depending on which experiement (line of the table) you want to reproduce. To reproduce everything run all configurations.
+
+Random nodes evaluation follows the same logic with `experiments_subgraphs_crossval_feature_ablation` config and random nodes `data_dir`. 
 
 ## Generate your own cell graphs
 

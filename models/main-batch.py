@@ -149,7 +149,6 @@ def main(cfg: DictConfig):
 
 
 
-
     # create limit index for the loop
     if cfg.cv:
         l = cfg.k_folds

@@ -20,13 +20,6 @@ seed: 123
 ## cross-validation
 cv: True                               
 k_folds: 3  
-order_file: configs/orders/order_WSI-Graph-100splits_3-max-hops-simplification.txt
 
 ## Device
 device: 0
-
-# EXPERIMENT configs
-# see file name
-
-## Experiment general
- 

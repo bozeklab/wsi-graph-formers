@@ -17,9 +17,9 @@ celltype_asfeature: True
 ## Training setting
 epochs: 200
 eval_step: 10 
-lr: 0.01
+lr: 0.001
 seed: 123
-weight_decay: 0.005
+# weight_decay: 0.005
 
 ## cross-validation
 cv: True                                
@@ -42,8 +42,3 @@ use_jk: False
 
 ## Device
 device: 0
-# EXPERIMENT configs
-# see file name
-
-## Experiment general
- 
