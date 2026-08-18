@@ -135,7 +135,7 @@ To evaluate with Random Nodes method follow the same logic and use experiments f
 ### With TILE-Graphs
 
 
-#### Scalable Graph Transformers eval
+#### Scalable Graph Transformers eval
 
 To **evaluate scalable Graph Transformers models** for binary node classification on TILE-Graphs dataset with 3-fold cross-validation, run the following command within this repository:
 
