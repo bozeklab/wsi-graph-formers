@@ -131,7 +131,10 @@ With <chosen_method> being one of the following:
 
 To evaluate with Random Nodes method follow the same logic and use experiments files from `configs/Graph_Transformers/experiments/` and data from `WSI-Graph` folder instead of ``WSI-Graph-100splits`` folder.
 
+
 ### With TILE-Graphs
+
+
 #### Scalable Graph Transformers eval
 
 To **evaluate scalable Graph Transformers models** for binary node classification on TILE-Graphs dataset with 3-fold cross-validation, run the following command within this repository:
