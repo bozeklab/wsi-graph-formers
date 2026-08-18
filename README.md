@@ -1,6 +1,7 @@
 # Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers
 
 <div align="center">
+
 [Project presentation](#todo) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation)
 
 </div>
@@ -131,6 +132,7 @@ With <chosen_method> being one of the following:
 To evaluate with Random Nodes method follow the same logic and use experiments files from `configs/Graph_Transformers/experiments/` and data from `WSI-Graph` folder instead of ``WSI-Graph-100splits`` folder.
 
 ### With TILE-Graphs
+
 
 #### Scalable Graph Transformers eval
 
