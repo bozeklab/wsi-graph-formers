@@ -80,7 +80,7 @@ Reproduce the node classification cross-validations from the paper.
 
 ### Downloading datasets 
 
-Run:
+Inside `wsi-graph-former` Run:
 
 TO WRITE AFTER DATASET RELEASE 
 
@@ -183,7 +183,7 @@ To reproduce feature ablation study experiments from the paper.
 
 ### Downloading corresponding data
 
-Run:
+Inside `wsi-graph-former` Run:
 
 TO WRITE AFTER DATASET RELEASE 
 
@@ -195,8 +195,7 @@ To reproduce feature ablation study for WSI-Graph **containing texture features*
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=experiments_subgraphs_crossval_feature_ablation data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/
-zscore_normalization=<True/False> celltype_asfeature=<True/False>
+python models/main-batch.py experiments=experiments_subgraphs_crossval_feature_ablation data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ zscore_normalization=<True/False> celltype_asfeature=<True/False>
 ```
 
 Choose False or True depending on which experiement (line of the table) you want to reproduce. To reproduce everything run all configurations.
@@ -205,13 +204,12 @@ To reproduce feature ablation study for WSI-Graph **without texture feature** wi
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=experiments_subgraphs_crossval_feature_ablation data_dir=data/experiments/feature-ablations/subgraphs/
-zscore_normalization=<True/False> celltype_asfeature=<True/False>
+python models/main-batch.py experiments=experiments_subgraphs_crossval_feature_ablation data_dir=data/experiments/feature-ablations/subgraphs/ order_file=data/experiments/feature-ablations/orders/notexture_order.txt zscore_normalization=<True/False> celltype_asfeature=<True/False>
 ```
 
 Choose False or True depending on which experiement (line of the table) you want to reproduce. To reproduce everything run all configurations.
 
-Random nodes evaluation follows the same logic with `experiments_subgraphs_crossval_feature_ablation` config and random nodes `data_dir`. 
+Random nodes evaluation follows the same logic with `main.py` , `experiments_randomnodes_crossval_feature_ablation` config and _data/WSI-Graph/_  `data_dir` (WSI-Graph folder is to download from Zenodo, it is not the same as WSI-Graph-100splits ; for nodes without texture feature corresponding data is in experiment folder). No needs of `order_file` as there is only one input file.
 
 ## Generate your own cell graphs
 

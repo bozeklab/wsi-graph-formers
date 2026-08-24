@@ -19,7 +19,8 @@ epochs: 200
 eval_step: 10 
 lr: 0.001
 seed: 123
-# weight_decay: 0.005
+weight_decay: 0.0
+# if I comment weight decay then it will take 0.005 by default!
 
 ## cross-validation
 cv: True                                

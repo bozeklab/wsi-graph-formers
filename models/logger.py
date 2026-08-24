@@ -12,8 +12,6 @@ class Logger(object):
         self.results[run].append(result)
 
     def print_statistics(self, run=None, mode='max_acc', cv=False):
-        if cv:
-            print("Only 2 splits, train and test. All results for valid are then None or 0s. Chosen epoch won't work neither.\n")
 
         if run is not None:
             result = 100 * torch.tensor(self.results[run])
@@ -23,6 +21,8 @@ class Logger(object):
                 ind = argmax
             else:
                 ind = argmin
+            # These stats are missleading with new code and do not add new info, 
+            # then commented from original repo rather than deleted
             # print_str=f'Run {run + 1:02d}:' + \
             #     f'Final Train: {result[ind, 0]:.2f} ' + \
             #     f'Final Test: {result[ind, 2]:.2f}'
@@ -56,17 +56,19 @@ class Logger(object):
 
             best_result = torch.tensor(best_results)
 
-            print(f'All runs:')
-            r = best_result[:, 0]
-            print(f'Highest Train: {r.mean():.2f} ± {r.std():.2f}')
-            r = best_result[:, 1]
-            print(f'Highest Test: {r.mean():.2f} ± {r.std():.2f}')
-            r = best_result[:, 2]
-            print(f'Highest Valid: {r.mean():.2f} ± {r.std():.2f}')
-            r = best_result[:, 3]
-            print(f'  Final Train: {r.mean():.2f} ± {r.std():.2f}')
-            r = best_result[:, 4]
-            print(f'   Final Test: {r.mean():.2f} ± {r.std():.2f}')
+            # These stats are missleading with new code and do not add new info, 
+            # then commented from original repo rather than deleted
+            # print(f'All runs:')
+            # r = best_result[:, 0]
+            # print(f'Highest Train: {r.mean():.2f} ± {r.std():.2f}')
+            # r = best_result[:, 1]
+            # print(f'Highest Test: {r.mean():.2f} ± {r.std():.2f}')
+            # r = best_result[:, 2]
+            # print(f'Highest Valid: {r.mean():.2f} ± {r.std():.2f}')
+            # r = best_result[:, 3]
+            # print(f'  Final Train: {r.mean():.2f} ± {r.std():.2f}')
+            # r = best_result[:, 4]
+            # print(f'   Final Test: {r.mean():.2f} ± {r.std():.2f}')
 
             self.test=r.mean()
 

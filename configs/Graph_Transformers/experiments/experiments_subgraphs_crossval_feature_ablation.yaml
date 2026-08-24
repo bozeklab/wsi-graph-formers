@@ -11,8 +11,8 @@ zscore_normalization: toprovide_incmd
 celltype_asfeature: toprovide_incmd  
 
 ## Training setting
-epochs: 1000 
-eval_step: 50 
+epochs: 200 
+eval_step: 10 
 lr: 0.001 
 seed: 123
 
