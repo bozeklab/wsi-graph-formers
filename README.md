@@ -1,9 +1,15 @@
+
+<div align="center">
+[![arXiv](https://img.shields.io/badge/arXiv-2602.15783-b31b1b.svg)](https://arxiv.org/abs/2602.15783)
+[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
+
+</div>
+
+
 # Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers
 
 <div align="center">
-
-[Project presentation](#todo) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation)
-
+[Project presentation](#project-presentation) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation)
 </div>
 
 <br>
@@ -31,8 +37,12 @@ Add the fact it is highly inspired from SGFormer repository and give link to it.
 
 To write (with tree command and then # explanation)
 
+## Installation
 
-## Installation 
+- [Prerequisites](#prerequisites) 
+- [Installation commands](#installation-commands) 
+- [Tested on](#tested-on) 
+
 ### Prerequisites
 
 - Linux x86-64
@@ -72,17 +82,30 @@ Other platforms have not been tested.
 
 The datasets used in this work are publicly available on Zenodo following this link:
 
-* [All datasets]  (link from zenodo)  [![DOI] (badgefromzenodo)] (link from zenodo) 
+* [WSI-Graph and TILE-Graphs datasets](https://doi.org/10.5281/zenodo.21415205) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21415205.svg)](https://doi.org/10.5281/zenodo.21415205)
 
 ## Node classification 
+
+- [Downloading datasets](#downloading-datasets) 
+- [With WSI-Graph](#with-wsi-graph)
+	- [Scalable Graph Transformers eval](#scalable-graph-transformers-eval) 
+	- [Classic GNNs eval](#classic-gnns-eval) 
+	- [Random nodes eval](#random-nodes-eval) 
+- [With TILE-Graphs](#with-tile-graphs) 
+	- [Scalable Graph Transformers eval](#scalable-graph-transformers-eval-1) 
+	- [Classic GNNs eval](#classic-gnns-eval-1) 
+- [Save cv result in a file](#save-cross-validation-result-in-a-file-rather-than-display-in-terminal) 
 
 Reproduce the node classification cross-validations from the paper. 
 
 ### Downloading datasets 
 
-Inside `wsi-graph-former` Run:
+Inside `wsi-graph-former` run:
 
-TO WRITE AFTER DATASET RELEASE 
+```bash
+chmod +x download_data_classification.sh
+./download_data_classification.sh
+```
 
 This will create a folder `data` inside your local `wsi-graph-formers` folder and include  extracted folders `TILE-Graphs` and `WSI-Graph-100splits` as well as the file `TILE_patients_ID.csv` from the Zenodo dataset. 
 
@@ -129,7 +152,7 @@ With <chosen_method> being one of the following:
 
 #### Random nodes eval
 
-To evaluate with Random Nodes method follow the same logic and use experiments files from `configs/Graph_Transformers/experiments/` and data from `WSI-Graph` folder instead of ``WSI-Graph-100splits`` folder.
+To evaluate with Random Nodes method follow the same logic and use experiments files from `configs/Graph_Transformers/experiments/` and data from `WSI-Graph` folder (to download) instead of ``WSI-Graph-100splits`` folder.
 
 
 ### With TILE-Graphs
@@ -179,15 +202,29 @@ To generate a text file eval.txt in current folder rather than generating evalua
 
 ## Ablation study
 
+- [Download corresponding data](#download-corresponding-data) 
+- [Feature ablation study](#feature-ablation-study) 
+
 To reproduce feature ablation study experiments from the paper.
 
-### Downloading corresponding data
+### Download corresponding data
 
-Inside `wsi-graph-former` Run:
+Inside `wsi-graph-former` run:
 
-TO WRITE AFTER DATASET RELEASE 
+```bash
+chmod +x download_data_experiments.sh
+./download_data_experiments.sh
+```
 
-This will create a folder `data` inside your local `wsi-graph-formers` folder (if not already done) and include  extracted folders `experiments` folder from the Zenodo dataset. 
+This will create a folder `data` inside your local `wsi-graph-formers` folder (if not already done) and include extracted folders `experiments`  and `WSI-Graph-100splits` folders from the Zenodo dataset (if not already done). 
+
+Remove all unnecessary MAC OS files (step needed):
+
+```bash
+cd data
+find . -type f \( -name '._*' -o -name '.DS_Store' \) -delete
+cd ..
+```
 
 ### Feature ablation study
 
@@ -213,6 +250,12 @@ Random nodes evaluation follows the same logic with `main.py` , `experiments_ran
 
 ## Generate your own cell graphs
 
+- [Requirements](#requirements) 
+- [Build](#build) 
+- [Convert](#convert) 
+- [Simplify](#simplify) 
+- [Split](#split) 
+
 <p align="center">
   <img src="docs/generate-cell-graphs.png">
 </p>
@@ -236,10 +279,9 @@ json_folder: "/path/to/data/"
 pickle_output_folder: "/path/to/output/folder/"
 ```
 
-Then:
+Then inside `wsi-graph-formers`:
 
 ```bash
-cd /path/to/wsi-graph-formers/
 conda activate wsi-graph-formers
 python dataset_tools/build_cell_graph.py
 ```
@@ -266,13 +308,12 @@ python dataset_tools/split_graph.py  nbr_subgraphs=100 	simplifiedgraph_folder=/
 
 ## Visualize cell graphs
 
-The visualization might have to be done locally, to avoid activating GUI on remote clusters if you work on cluster.
+The visualization might have to be done locally, to avoid activating GUI on remote clusters.
 
 
 **Visualize output of inference from binary classification**
 
 ```bash
-cd /path/to/wsi-graph-formers/
 conda activate wsi-graph-formers
 python dataset_tools/visualize_cell_graph.py backend=pyg graphtype=binary visualization_path=/path/to/file/to/visualize.pt
 ```
@@ -280,7 +321,6 @@ python dataset_tools/visualize_cell_graph.py backend=pyg graphtype=binary visual
 **Visualize dataset graph with pyg**
 
 ```bash
-cd /path/to/wsi-graph-formers/
 conda activate wsi-graph-formers
 python dataset_tools/visualize_cell_graph.py backend=pyg graphtype=dataset visualization_path=/path/to/file/to/visualize.pt
 ```
@@ -304,11 +344,6 @@ Information about the generation and training of image baseline datasets is avai
 }
 ```
 If you use this code or the dataset link please also consider starring the repo to increase its visibility! Thanks 💫
-
-
-Shield: [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
-
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
 
 [cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
 [cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
