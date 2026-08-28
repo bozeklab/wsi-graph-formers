@@ -10,7 +10,6 @@
 # Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers
 
 <div align="center">
-
 [Project presentation](#project-presentation) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation)
 
 </div>
@@ -38,7 +37,9 @@ Add the fact it is highly inspired from SGFormer repository and give link to it.
 
 ## Project structure
 
-To write (with tree command and then # explanation)
+```bash
+Tree with #explanations (short)   
+```
 
 ## Installation
 
@@ -89,7 +90,7 @@ The datasets used in this work are publicly available on Zenodo following this l
 
 ## Node classification 
 
-- [Downloading datasets](#downloading-datasets) 
+- [Download datasets](#download-datasets) 
 - [With WSI-Graph](#with-wsi-graph)
 	- [Scalable Graph Transformers eval](#scalable-graph-transformers-eval) 
 	- [Classic GNNs eval](#classic-gnns-eval) 
@@ -101,7 +102,7 @@ The datasets used in this work are publicly available on Zenodo following this l
 
 Reproduce the node classification cross-validations from the paper. 
 
-### Downloading datasets 
+### Download datasets 
 
 Inside `wsi-graph-former` run:
 
@@ -127,14 +128,17 @@ To **evaluate scalable Graph Transformers models** with subgraph evaluation  met
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=<chosen_experiments> data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ 
+python models/main-batch.py experiments=chosen_experiments data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ 
 ```
 
-With <chosen_experiments> being one of the following:
+<details>
+	<summary>With chosen_experiments being one of the following:</summary>
 
-- WSI-Graphs_subgraphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
-- WSI-Graphs_subgraphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
-- WSI-Graphs_subgraphs_crossval_SGFormer ; to evaluate SGFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs  
+   - WSI-Graphs_subgraphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+   - WSI-Graphs_subgraphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+   - WSI-Graphs_subgraphs_crossval_SGFormer ; to evaluate SGFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs     
+
+</details>
 
 #### Classic GNNs eval
 
@@ -142,10 +146,10 @@ To **evaluate other GNNs models** with subgraph evaluation  method for binary no
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=WSI-Graphs_subgraphs_crossval_generalgnn data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ method=<chosen_method> 
+python models/main-batch.py experiments=WSI-Graphs_subgraphs_crossval_generalgnn data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ method=chosen_method
 ```
 
-With <chosen_method> being one of the following:
+With chosen_method being one of the following:
 
 -  gcnbin ; to evaluate GCN model with 3-fold cross-validation on WSI-Graph dataset using subgraphs 
 -  gatbin ; to evaluate GAT model with 3-fold cross-validation on WSI-Graph dataset using subgraphs 
@@ -167,10 +171,10 @@ To **evaluate scalable Graph Transformers models** for binary node classificatio
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=<chosen_experiments> data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv
+python models/main-batch.py experiments=chosen_experiments data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv
 ```
 
-With <chosen_experiments> being one of the following:
+With chosen_experiments being one of the following:
 
 - TILE-Graphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on TILE-Graphs dataset
 - TILE-Graphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on TILE-Graphs dataset
@@ -182,10 +186,10 @@ To **evaluate other GNNs models** for binary node classification on TILE-Graphs 
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=TILE-Graphs_crossval_generalgnn data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv  method=<chosen_method> 
+python models/main-batch.py experiments=TILE-Graphs_crossval_generalgnn data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv  method=chosen_method 
 ```
 
-With <chosen_method> being one of the following:
+With chosen_method being one of the following:
 
 -  gcnbin ; to evaluate GCN model with 3-fold cross-validation on TILE-Graphs dataset
 -  gatbin ; to evaluate GAT model with 3-fold cross-validation on TILE-Graphs dataset
