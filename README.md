@@ -1,5 +1,6 @@
 
 <div align="center">
+
 [![arXiv](https://img.shields.io/badge/arXiv-2602.15783-b31b1b.svg)](https://arxiv.org/abs/2602.15783)
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 
@@ -9,7 +10,9 @@
 # Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers
 
 <div align="center">
+
 [Project presentation](#project-presentation) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation)
+
 </div>
 
 <br>
