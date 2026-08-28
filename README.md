@@ -128,15 +128,15 @@ To **evaluate scalable Graph Transformers models** with subgraph evaluation  met
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=chosen_experiments data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ 
+python models/main-batch.py experiments=<chosen_experiment> data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ 
 ```
 
 <details>
-	<summary>[Unfold] With chosen_experiments being one of the following:</summary>
+	<summary>[Unfold] With chosen_experiment being one of the following:</summary>
 
-   - WSI-Graphs_subgraphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
-   - WSI-Graphs_subgraphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
-   - WSI-Graphs_subgraphs_crossval_SGFormer ; to evaluate SGFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs     
+- WSI-Graphs_subgraphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+- WSI-Graphs_subgraphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+- WSI-Graphs_subgraphs_crossval_SGFormer ; to evaluate SGFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs     
 
 </details>
 
@@ -146,7 +146,7 @@ To **evaluate other GNNs models** with subgraph evaluation  method for binary no
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=WSI-Graphs_subgraphs_crossval_generalgnn data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ method=chosen_method
+python models/main-batch.py experiments=WSI-Graphs_subgraphs_crossval_generalgnn data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ method=<chosen_method>
 ```
 
 <details>
@@ -174,14 +174,17 @@ To **evaluate scalable Graph Transformers models** for binary node classificatio
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=chosen_experiments data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv
+python models/main-batch.py experiments=<chosen_experiment> data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv
 ```
 
-With chosen_experiments being one of the following:
+<details>
+	<summary>[Unfold] With chosen_experiment being one of the following:</summary>
 
 - TILE-Graphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on TILE-Graphs dataset
 - TILE-Graphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on TILE-Graphs dataset
 - TILE-Graphs_crossval_SGFormer ; to evaluate SGFormer model with 3-fold cross-validation on TILE-Graphs dataset
+
+</details>
 
 #### Classic GNNs eval
 
@@ -189,16 +192,19 @@ To **evaluate other GNNs models** for binary node classification on TILE-Graphs 
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py experiments=TILE-Graphs_crossval_generalgnn data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv  method=chosen_method 
+python models/main-batch.py experiments=TILE-Graphs_crossval_generalgnn data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv  method=<chosen_method> 
 ```
 
-With chosen_method being one of the following:
+<details>
+	<summary>[Unfold] With chosen_method being one of the following:</summary>
 
 -  gcnbin ; to evaluate GCN model with 3-fold cross-validation on TILE-Graphs dataset
 -  gatbin ; to evaluate GAT model with 3-fold cross-validation on TILE-Graphs dataset
 -  sgcbin ; to evaluate SGC model with 3-fold cross-validation on TILE-Graphs dataset 
 -  sgc2bin ; to evaluate SGC-MLP model with 3-fold cross-validation on TILE-Graphs dataset 
 -  signbin ; to evaluate SIGN model with 3-fold cross-validation on TILE-Graphs dataset
+
+</details>
 
 ### Save cross-validation result in a file rather than display in terminal
 
@@ -274,9 +280,9 @@ Random nodes evaluation follows the same logic with `main.py` , `experiments_ran
 
 Need to run histo-miner inferences on the WSI / patch you want to generate graph from.  Either run SCC Segmenter if no tumor annotation exists or create your own annotations. 
 
-See TO FILL
+See [histo-miner](https://github.com/bozeklab/histo-miner/tree/master) / Models inference: nucleus segmentation and classification. 
 
-It will then generate the prediction as a json file.
+It will then generate the prediction as a json file that you can use for the following steps.
 
 ### Build
 
