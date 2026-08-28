@@ -10,6 +10,7 @@
 # Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers
 
 <div align="center">
+
 [Project presentation](#project-presentation) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation)
 
 </div>
