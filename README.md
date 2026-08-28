@@ -132,7 +132,7 @@ python models/main-batch.py experiments=chosen_experiments data_dir=data/WSI-Gra
 ```
 
 <details>
-	<summary>With chosen_experiments being one of the following:</summary>
+	<summary>[Unfold] With chosen_experiments being one of the following:</summary>
 
    - WSI-Graphs_subgraphs_crossval_DIFFormer ; to evaluate DIFFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
    - WSI-Graphs_subgraphs_crossval_NodeFormer ; to evaluate NodeFormer model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
@@ -149,13 +149,16 @@ conda activate wsi-graph-formers
 python models/main-batch.py experiments=WSI-Graphs_subgraphs_crossval_generalgnn data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ method=chosen_method
 ```
 
-With chosen_method being one of the following:
+<details>
+	<summary>[Unfold] With chosen_method being one of the following:</summary>
 
 -  gcnbin ; to evaluate GCN model with 3-fold cross-validation on WSI-Graph dataset using subgraphs 
 -  gatbin ; to evaluate GAT model with 3-fold cross-validation on WSI-Graph dataset using subgraphs 
 -  sgcbin ; to evaluate SGC model with 3-fold cross-validation on WSI-Graph dataset using subgraphs 
 -  sgc2bin ; to evaluate SGC-MLP model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
 -  signbin ; to evaluate SIGN model with 3-fold cross-validation on WSI-Graph dataset using subgraphs
+
+</details>
 
 #### Random nodes eval
 
