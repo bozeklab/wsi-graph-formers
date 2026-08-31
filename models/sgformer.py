@@ -1,15 +1,14 @@
-import math
-import os
+
 import torch
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_sparse import SparseTensor, matmul
 from torch_geometric.utils import degree
+from torch_sparse import SparseTensor, matmul
+
 
 class GraphConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, use_weight=True, use_init=False):
-        super(GraphConvLayer, self).__init__()
+        super().__init__()
 
         self.use_init = use_init
         self.use_weight = use_weight
@@ -44,7 +43,7 @@ class GraphConvLayer(nn.Module):
 
 class GraphConv(nn.Module):
     def __init__(self, in_channels, hidden_channels, num_layers=2, dropout=0.5, use_bn=True, use_residual=True, use_weight=True, use_init=False, use_act=True):
-        super(GraphConv, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.fcs = nn.ModuleList()

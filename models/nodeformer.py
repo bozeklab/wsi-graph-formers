@@ -1,10 +1,11 @@
-import math,os
-import torch
+import math
+
 import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_geometric.utils import add_self_loops, degree, remove_self_loops
 from torch_sparse import SparseTensor, matmul
-from torch_geometric.utils import degree, remove_self_loops, add_self_loops
 
 BIG_CONSTANT = 1e8
 
@@ -229,7 +230,7 @@ class NodeFormerConv(nn.Module):
     '''
     def __init__(self, in_channels, out_channels, num_heads, kernel_transformation=softmax_kernel_transformation, projection_matrix_type='a',
                  nb_random_features=10, use_gumbel=True, nb_gumbel_sample=10, rb_order=0, rb_trans='sigmoid', use_edge_loss=True):
-        super(NodeFormerConv, self).__init__()
+        super().__init__()
         self.Wk = nn.Linear(in_channels, out_channels * num_heads)
         self.Wq = nn.Linear(in_channels, out_channels * num_heads)
         self.Wv = nn.Linear(in_channels, out_channels * num_heads)
@@ -315,7 +316,7 @@ class NodeFormer(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2, num_heads=4, dropout=0.0,
                  kernel_transformation=softmax_kernel_transformation, nb_random_features=30, use_bn=True, use_gumbel=True,
                  use_residual=True, use_act=False, use_jk=False, nb_gumbel_sample=10, rb_order=2, rb_trans='sigmoid', use_edge_loss=True):
-        super(NodeFormer, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.fcs = nn.ModuleList()
@@ -408,7 +409,7 @@ class NodeFormer_bin(nn.Module):
                  num_layers=2, num_heads=4, dropout=0.0,
                  kernel_transformation=softmax_kernel_transformation, nb_random_features=30, use_bn=True, use_gumbel=True,
                  use_residual=True, use_act=False, use_jk=False, nb_gumbel_sample=10, rb_order=2, rb_trans='sigmoid', use_edge_loss=True):
-        super(NodeFormer_bin, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.fcs = nn.ModuleList()

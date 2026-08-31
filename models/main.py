@@ -1,47 +1,54 @@
 
-import sys
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 # sys.path.append('../../../')  # Only for Remote use on Clusters
+import os
+import random
+import time
+import warnings
+from collections import Counter
+from datetime import datetime
 
-
-import argparse
-import sys
-import os, random
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.utils import to_undirected, remove_self_loops, add_self_loops
-from torch_scatter import scatter
-from torch_geometric.data import Batch , Data # for PyG v1.7
-
-
-from logger import Logger, save_result
-from dataset import load_dataset, load_dataset_extra, NCDataset, custom_fixed_split, \
-    custom_cv_split_train_test
-from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, eval_f1, \
-    eval_binary_acc, eval_binary_rocauc, eval_binary_f1, eval_binary_bacc, eval_bacc, \
-    to_sparse_tensor, load_fixed_splits, adj_mul, get_gpu_memory_map, count_parameters
+from data_utils import (
+    eval_acc,
+    eval_bacc,
+    eval_binary_acc,
+    eval_binary_bacc,
+    eval_binary_f1,
+    eval_binary_rocauc,
+    eval_f1,
+    eval_rocauc,
+)
+from dataset import (
+    NCDataset,
+    custom_cv_split_train_test,
+    custom_fixed_split,
+    load_dataset_extra,
+)
 from eval import evaluate, evaluate_binary_masked
-from parse import parse_method 
-from collections import Counter
+from logger import Logger
+from parse import parse_method
+from torch_geometric.data import Data  # for PyG v1.7
+from torch_geometric.utils import add_self_loops, remove_self_loops, to_undirected
 
-import time
-import pickle
-from datetime import datetime
-
-import warnings
 warnings.filterwarnings('ignore')
 
 import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
-from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
-    append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_on_graph_list, \
-    sanity_check_graph_list, induce_split_subgraph
-from utils.train_utils import fix_seed
- 
+from utils.graph_utils import (
+    append_celltype_onehot_pyg,
+    fit_zscore_stats_pyg,
+    induce_split_subgraph,
+    mask_on_graph_list,
+    normalize_encode_celltype_pyg,
+    normalize_zscore_pyg,
+    sanity_check_graph_list,
+)
 
 
 @hydra.main(config_path="../configs/Graph_Transformers", config_name="config_largewsi", version_base=None)
@@ -58,7 +65,7 @@ def main(cfg: DictConfig):
     # change depending on the dataset choosen for instance
     nodestype = cfg.nodestype 
 
-    print("Here is the dataset selected: {}".format(cfg.dataset))
+    print(f"Here is the dataset selected: {cfg.dataset}")
 
     ### Load and preprocess data ###
     if cfg.dataset == 'onegraphskinwsi':
@@ -146,7 +153,7 @@ def main(cfg: DictConfig):
                 seed=cfg.seed
             )
             valid_idx = None # to test
-            print("\n***Cross-validation with test fold {}***\n".format(testfold_idx))
+            print(f"\n***Cross-validation with test fold {testfold_idx}***\n")
 
         else:
             train_idx, valid_idx, test_idx = custom_fixed_split(
@@ -422,9 +429,9 @@ def main(cfg: DictConfig):
         test_ids = set(test_idx.tolist())
         intersection3 = train_ids & test_ids
         if not cfg.cv: 
+            valid_ids = set(valid_idx.tolist())
             intersection1 = train_ids & valid_ids
             intersection2 = valid_ids & test_ids
-            valid_ids = set(valid_idx.tolist())
 
         print(f"Sanity check: are splits fully separated:")
         if not cfg.cv: 

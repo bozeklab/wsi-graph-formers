@@ -2,26 +2,21 @@
 Lucas Sancéré 2025
 """
 
-import os
 import json
-import math
-import argparse
-import tempfile
-from pathlib import Path
-from typing import Dict, Any, Tuple, Iterable, Generator, Optional
-
-import numpy as np
-import cv2
-from tqdm import tqdm
-import openslide  # provides slide.dimensions == (W, H) at level 0
-from collections import OrderedDict
 import logging
-import tifffile
+import math
+from collections import OrderedDict
+from pathlib import Path
+from typing import Any, Dict, Generator, Iterable, Optional, Tuple
 
-from omegaconf import DictConfig
+import cv2
 import hydra
+import numpy as np
+import openslide  # provides slide.dimensions == (W, H) at level 0
+import tifffile
 from hydra.utils import to_absolute_path
-
+from omegaconf import DictConfig
+from tqdm import tqdm
 
 log = logging.getLogger(__name__)
 
@@ -119,7 +114,7 @@ def iter_top_level_kv(path: str) -> Generator[Tuple[str, Any], None, None]:
         Path to a JSON file whose top level is a dictionary:
         { "<inst_id>": { ... }, "<inst_id>": { ... }, ... }.
     """
-    with open(path, 'rt', encoding='utf-8') as f:
+    with open(path, encoding='utf-8') as f:
         # seek '{'
         c = f.read(1)
         while c and c.isspace():
@@ -447,7 +442,7 @@ def stage_b_rasterize_tiles(
         local_id = 0
         id_map: Dict[int, int] = {}
 
-        with open(shard_path, 'r', encoding='utf-8') as fh:
+        with open(shard_path, encoding='utf-8') as fh:
             for line in fh:
                 rec = json.loads(line)
                 oid = int(rec["id"])

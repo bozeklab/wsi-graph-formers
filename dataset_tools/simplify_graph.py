@@ -3,21 +3,20 @@ Lucas Sancéré 2025
 """
 
 import sys
+
 sys.path.append('../')  # Only for Remote use on Cluste
 
-import os
-from tqdm import tqdm
 import glob
-import torch
-from torch_geometric.data import Data
-from torch_geometric.utils import subgraph
-import networkx as nx
+import os
 from typing import Optional
 
-from omegaconf import DictConfig
 import hydra
-
-
+import networkx as nx
+import torch
+from omegaconf import DictConfig
+from torch_geometric.data import Data
+from torch_geometric.utils import subgraph
+from tqdm import tqdm
 
 
 def subgraph_filtering(data: Data, nodes_to_keep: torch.Tensor, filtering_step: int) -> Data:

@@ -52,3 +52,47 @@ packages = [
 "configs" = ["*.yaml", "orders/*.txt"]
 "configs.Graph_Transformers" = ["*.yaml", "experiments/*.yaml"]
 "baseline_tools.cellvit" = ["*.yaml"]
+
+
+# Development tooling
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6",
+    "pytest>=7",
+    "pyyaml>=5",
+    "tomli>=1.1; python_version < '3.11'",
+]
+
+
+[tool.ruff]
+target-version = "py38"
+line-length = 90
+# Scoped to the code this repository authored. models/ is adapted from SGFormer
+# and restyling it would only make the diff against upstream harder to read.
+include = ["tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",   # line length
+    "W291",   # trailing whitespace: almost all of it sits inside docstrings,
+    "W293",   #   where removing it would rewrite the string content itself
+    "B905",   # zip() without strict=: needs per-call-site review, deferred
+    "B007",   # unused loop control variable: cosmetic
+    "F403",   # `from models.gnns import *`: how parse.py is meant to work,
+    "F405",   #   unrolling it is a refactor, not a lint fix
+    "E402",   # import after code: deliberate sys.path setup in several scripts
+]
+
+[tool.ruff.lint.isort]
+# `conftest` and the project packages are local, not third-party.
+known-first-party = [
+    "conftest", "models", "utils", "dataset_tools", "configs", "baseline_tools",
+]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "torch: needs the full torch / PyG environment from environment.yaml",
+]

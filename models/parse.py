@@ -1,7 +1,7 @@
+from models.difformer import *
 from models.gnns import *
-from models.sgformer import *
 from models.nodeformer import *
-from models.difformer import * 
+from models.sgformer import *
 
 
 def parse_method(cfg, c: int, d: int, device: torch.device):

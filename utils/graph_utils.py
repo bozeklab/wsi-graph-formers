@@ -3,12 +3,13 @@ Lucas Sancéré 2025
 """
 
 from __future__ import annotations
-from typing import Any, Tuple
+
+from typing import Any
+
 import numpy as np
 import torch
-from torch import Tensor
 import torch.nn.functional as F
-from torch.utils.data import Subset
+
 # from torch_geometric.utils import subgraph
 from torch_geometric.data import Data
 

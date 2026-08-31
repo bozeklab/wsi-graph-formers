@@ -1,10 +1,9 @@
-import scipy.io
-import numpy as np
-import scipy.sparse
-import torch
 import csv
 import json
-from os import path
+
+import numpy as np
+import scipy.io
+import scipy.sparse
 
 DATAPATH = '../data/'
 
@@ -26,7 +25,7 @@ def load_twitch(lang):
     src = []
     targ = []
     uniq_ids = set()
-    with open(f"{filepath}/musae_{lang}_target.csv", 'r') as f:
+    with open(f"{filepath}/musae_{lang}_target.csv") as f:
         reader = csv.reader(f)
         next(reader)
         for row in reader:
@@ -38,13 +37,13 @@ def load_twitch(lang):
                 node_ids.append(int(row[5]))
 
     node_ids = np.array(node_ids, dtype=np.int)
-    with open(f"{filepath}/musae_{lang}_edges.csv", 'r') as f:
+    with open(f"{filepath}/musae_{lang}_edges.csv") as f:
         reader = csv.reader(f)
         next(reader)
         for row in reader:
             src.append(int(row[0]))
             targ.append(int(row[1]))
-    with open(f"{filepath}/musae_{lang}_features.json", 'r') as f:
+    with open(f"{filepath}/musae_{lang}_features.json") as f:
         j = json.load(f)
     src = np.array(src)
     targ = np.array(targ)

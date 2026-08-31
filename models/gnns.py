@@ -1,19 +1,26 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_sparse import SparseTensor, matmul
-from torch_geometric.nn import GCNConv, SGConv, GATConv, JumpingKnowledge, APPNP, MessagePassing
+import torch_sparse
+from torch_geometric.nn import (
+    APPNP,
+    GATConv,
+    GCNConv,
+    JumpingKnowledge,
+    MessagePassing,
+    SGConv,
+)
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 from torch_geometric.utils import degree
-import scipy.sparse
-import numpy as np
-import torch_sparse
+from torch_sparse import SparseTensor, matmul
+
 
 class LINK(nn.Module):
     """ logistic regression on adjacency matrix """
     
     def __init__(self, num_nodes, out_channels):
-        super(LINK, self).__init__()
+        super().__init__()
         self.W = nn.Linear(num_nodes, out_channels)
 
     def reset_parameters(self):
@@ -34,7 +41,7 @@ class MLP(nn.Module):
     """ adapted from https://github.com/CUAI/CorrectAndSmooth/blob/master/gen_models.py """
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers,
                  dropout=.5):
-        super(MLP, self).__init__()
+        super().__init__()
         self.lins = nn.ModuleList()
         self.bns = nn.ModuleList()
         if num_layers == 1:
@@ -68,7 +75,7 @@ class MLP(nn.Module):
 class SGC(nn.Module):
     def __init__(self, in_channels, out_channels, hops):
         """ takes 'hops' power of the normalized adjacency"""
-        super(SGC, self).__init__()
+        super().__init__()
         self.conv = SGConv(in_channels, out_channels, hops, cached=False) 
 
     def reset_parameters(self):
@@ -83,7 +90,7 @@ class SGCMem(nn.Module):
     def __init__(self, in_channels, out_channels, hops, use_bn=False):
         """ self-implementation of SGC
         """
-        super(SGCMem, self).__init__()
+        super().__init__()
 
         self.lin = nn.Linear(in_channels, out_channels)
         self.hops = hops
@@ -177,7 +184,7 @@ class SGC2(nn.Module):
 class GCN(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2,
                  dropout=0.5, save_mem=True, use_bn=True):
-        super(GCN, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.convs.append(
@@ -272,7 +279,7 @@ class SIGN(nn.Module):
 class GAT(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2,
                  dropout=0.5, use_bn=False, heads=2, out_heads=1):
-        super(GAT, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.convs.append(
@@ -313,7 +320,7 @@ class MultiLP(nn.Module):
     """ label propagation, with possibly multiple hops of the adjacency """
     
     def __init__(self, out_channels, alpha, hops, num_iters=50, mult_bin=False):
-        super(MultiLP, self).__init__()
+        super().__init__()
         self.out_channels = out_channels
         self.alpha = alpha
         self.hops = hops
@@ -365,7 +372,7 @@ class MultiLP(nn.Module):
 class MixHopLayer(nn.Module):
     """ Our MixHop layer """
     def __init__(self, in_channels, out_channels, hops=2):
-        super(MixHopLayer, self).__init__()
+        super().__init__()
         self.hops = hops
         self.lins = nn.ModuleList()
         for hop in range(self.hops+1):
@@ -394,7 +401,7 @@ class MixHop(nn.Module):
     """
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2,
                  dropout=0.5, hops=2):
-        super(MixHop, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.convs.append(MixHopLayer(in_channels, hidden_channels, hops=hops))
@@ -452,7 +459,7 @@ class MixHop(nn.Module):
 class GCNJK(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2,
                  dropout=0.5, save_mem=False, jk_type='max'):
-        super(GCNJK, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.convs.append(
@@ -501,7 +508,7 @@ class GCNJK(nn.Module):
 class GATJK(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2,
                  dropout=0.5, heads=2, jk_type='max'):
-        super(GATJK, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.convs.append(
@@ -554,7 +561,7 @@ class GATJK(nn.Module):
 class H2GCNConv(nn.Module):
     """ Neighborhood aggregation step """
     def __init__(self):
-        super(H2GCNConv, self).__init__()
+        super().__init__()
 
     def reset_parameters(self):
         pass
@@ -567,7 +574,7 @@ class H2GCNConv(nn.Module):
 
 class APPNP_Net(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, dropout=.5, K=10, alpha=.1):
-        super(APPNP_Net, self).__init__()
+        super().__init__()
         self.lin1 = nn.Linear(in_channels, hidden_channels)
         self.lin2 = nn.Linear(hidden_channels, out_channels)
         self.prop1 = APPNP(K, alpha)
@@ -592,7 +599,7 @@ class GPR_prop(MessagePassing):
     '''
 
     def __init__(self, K, alpha, Init, Gamma=None, bias=True, **kwargs):
-        super(GPR_prop, self).__init__(aggr='add', **kwargs)
+        super().__init__(aggr='add', **kwargs)
         self.K = K
         self.Init = Init
         self.alpha = alpha
@@ -647,15 +654,14 @@ class GPR_prop(MessagePassing):
         return norm.view(-1, 1) * x_j
 
     def __repr__(self):
-        return '{}(K={}, temp={})'.format(self.__class__.__name__, self.K,
-                                          self.temp)
+        return f'{self.__class__.__name__}(K={self.K}, temp={self.temp})'
 
 
 class GPRGNN(nn.Module):
     """GPRGNN, from original repo https://github.com/jianhao2016/GPRGNN"""
 
     def __init__(self, in_channels, hidden_channels, out_channels, Init='PPR', dprate=.5, dropout=.5, K=10, alpha=.1, Gamma=None, ppnp='GPR_prop'):
-        super(GPRGNN, self).__init__()
+        super().__init__()
         self.lin1 = nn.Linear(in_channels, hidden_channels)
         self.lin2 = nn.Linear(hidden_channels, out_channels)
 

@@ -35,19 +35,14 @@ Example:
 
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional  
+from typing import Dict, List, Optional, Tuple
 
+import hydra
 import numpy as np
+from hydra.utils import to_absolute_path
+from omegaconf import DictConfig
 from PIL import Image
 from tqdm import tqdm
-
-from omegaconf import DictConfig
-import hydra
-from hydra.utils import to_absolute_path
-
-
-
-
 
 # ----------------------
 # Helpers

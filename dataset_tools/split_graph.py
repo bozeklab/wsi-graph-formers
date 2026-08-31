@@ -3,24 +3,20 @@ Lucas Sancéré 2025
 """
 
 import sys
+
 sys.path.append('../')  # Only for Remote use on Cluste
 
-import os
-from tqdm import tqdm
 import glob
-import torch
-from torch_geometric.data import Data
-from torch_geometric.utils import subgraph as node_subgraph
-import networkx as nx
+import os
 from typing import Dict
 
-from omegaconf import DictConfig
 import hydra
+import torch
+from omegaconf import DictConfig
+from torch_geometric.utils import subgraph as node_subgraph
+from tqdm import tqdm
 
 from models.dataset import NCDataset
-
-
-
 
 
 def extract_cluster_subgraph_dict(inputgraph, node_mask: torch.Tensor) -> Dict[str, torch.Tensor]:

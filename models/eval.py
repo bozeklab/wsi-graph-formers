@@ -1,19 +1,24 @@
-import os
-import sys
 import glob
-
-import torch
-import torch.nn.functional as F
-from torch_geometric.utils import subgraph
+import os
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
-
-from utils.graph_utils import mask_celltype_onehot_cols
-from models.data_utils import eval_acc, eval_rocauc, eval_f1, \
-    eval_binary_acc, eval_binary_rocauc, eval_binary_f1, eval_binary_bacc, eval_bacc
+import torch
+import torch.nn.functional as F
 from dataset import load_dataset
+from omegaconf import DictConfig, OmegaConf
+from torch_geometric.utils import subgraph
 from tqdm import tqdm
+
+from models.data_utils import (
+    eval_acc,
+    eval_bacc,
+    eval_binary_acc,
+    eval_binary_bacc,
+    eval_binary_f1,
+    eval_binary_rocauc,
+    eval_f1,
+    eval_rocauc,
+)
 
 
 @torch.no_grad()
@@ -520,7 +525,7 @@ def main(cfg: DictConfig):
             threshold_logit=0.5
         )
 
-        print("{} of the test sample is {}".format(cfg.metric, evalmetric))
+        print(f"{cfg.metric} of the test sample is {evalmetric}")
 
 
 

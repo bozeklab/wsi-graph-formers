@@ -2,12 +2,11 @@
 Lucas Sancéré 2025
 """
 
-import os
 import csv
+import os
 
-from omegaconf import DictConfig
 import hydra
-from hydra.utils import to_absolute_path
+from omegaconf import DictConfig
 
 
 def create_types_csv(folder_path, output_csv):

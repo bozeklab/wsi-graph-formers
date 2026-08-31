@@ -3,24 +3,24 @@ Lucas Sancéré 2025
 """
 
 import sys
+
 sys.path.append('../')  # Only for Remote use on Clusters
 
-import pickle
-import torch
-import numpy as np
-import networkx as nx
-from torch_geometric.utils import from_networkx
-import hydra
-from omegaconf import DictConfig
-from pathlib import Path
-import os
-from tqdm import tqdm
 import glob
+import os
+import pickle
+
+import hydra
+import networkx as nx
+import numpy as np
+import torch
+from omegaconf import DictConfig
 from torch_geometric.data import Data
+from torch_geometric.utils import from_networkx
+from tqdm import tqdm
+
 # from torch_sparse import coalesce
-
-from utils.graph_utils import _is_numeric, _flatten
-
+from utils.graph_utils import _flatten, _is_numeric
 
 
 def _to_tensor(x, dtype=None):

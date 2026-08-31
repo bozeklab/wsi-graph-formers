@@ -1,6 +1,7 @@
 import torch
 
-class Logger(object):
+
+class Logger:
     """ Adapted from https://github.com/snap-stanford/ogb/ """
     def __init__(self, runs, info=None):
         self.info = info
@@ -73,6 +74,8 @@ class Logger(object):
             self.test=r.mean()
 
 import os
+
+
 def save_result(args, results):
     if not os.path.exists(f'results/{args.dataset}'):
         os.makedirs(f'results/{args.dataset}')

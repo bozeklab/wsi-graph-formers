@@ -1,44 +1,58 @@
 
-import argparse
-import sys
-import os, random, re
-import numpy as np
+import os
+import random
+import time
+import warnings
+from collections import Counter, defaultdict
+from datetime import datetime
+
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.utils import to_undirected, remove_self_loops, add_self_loops, subgraph, k_hop_subgraph
-from torch_scatter import scatter
-from torch_geometric.data import Batch , Data # for PyG v1.7
-from torch.utils.data import DataLoader 
-import pandas as pd
-
-
+from data_utils import (
+    eval_acc,
+    eval_bacc,
+    eval_binary_acc,
+    eval_binary_bacc,
+    eval_binary_f1,
+    eval_binary_rocauc,
+    eval_f1,
+    eval_rocauc,
+)
+from dataset import load_dataset_extra
+from eval import (
+    evaluate_binmasked_wloader,
+    evaluate_wloader,
+)
 from logger import Logger
-from dataset import load_dataset, load_dataset_extra
-from data_utils import normalize, gen_normalized_adjs, eval_acc, eval_rocauc, eval_f1, \
-    eval_binary_acc, eval_binary_rocauc, eval_binary_f1, eval_binary_bacc, eval_bacc, \
-    to_sparse_tensor, load_fixed_splits, adj_mul, get_gpu_memory_map, count_parameters
-from eval import evaluate_large, evaluate_batch, evaluate_wloader, evaluate_binmasked_wloader
 from parse import parse_method
-from collections import Counter, defaultdict
+from torch.utils.data import DataLoader
+from torch_geometric.data import Batch, Data  # for PyG v1.7
 
-import time
-import pickle
-from datetime import datetime
-
-import warnings
 warnings.filterwarnings('ignore')
 
 import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
-from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
-    append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_on_graph_list, \
-    sanity_check_graph_list 
-from utils.train_utils import cv_train_test_indices, cv_subgraphs_skinwsi_patient_split, \
-    normalize_wsi, get_graph_id, get_patchgraph_id, has_epithelial_nodes, fix_seed
-
+from utils.graph_utils import (
+    append_celltype_onehot_pyg,
+    fit_zscore_stats_pyg,
+    mask_on_graph_list,
+    normalize_encode_celltype_pyg,
+    normalize_zscore_pyg,
+    sanity_check_graph_list,
+)
+from utils.train_utils import (
+    cv_subgraphs_skinwsi_patient_split,
+    cv_train_test_indices,
+    fix_seed,
+    get_graph_id,
+    get_patchgraph_id,
+    has_epithelial_nodes,
+    normalize_wsi,
+)
 
 
 @hydra.main(config_path="../configs/Graph_Transformers", config_name="config_largewsi", version_base=None)
@@ -55,7 +69,7 @@ def main(cfg: DictConfig):
     # change depending on the dataset choosen for instance
     nodestype = cfg.nodestype 
 
-    print("Here is the dataset selected: {}".format(cfg.dataset))
+    print(f"Here is the dataset selected: {cfg.dataset}")
 
     ### Load and preprocess data ###
     if cfg.dataset == 'skinwsi':
@@ -187,7 +201,7 @@ def main(cfg: DictConfig):
                 train_data = [graph_list[i] for i in train_idx]
                 test_data  = [graph_list[i] for i in test_idx]
                 val_data = [] # to test 
-                print("\n***Cross-validation with test fold {}***\n".format(testfold_idx))
+                print(f"\n***Cross-validation with test fold {testfold_idx}***\n")
 
         else: 
             if cfg.dataset == 'skinwsi':

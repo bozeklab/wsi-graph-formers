@@ -1,33 +1,32 @@
-from collections import defaultdict
+import csv
+import json
+import os
+from os import path
+
+import networkx as nx
 import numpy as np
-import torch
-import torch.nn.functional as F
 import scipy
 import scipy.io
-from sklearn.preprocessing import label_binarize
-import torch_geometric.transforms as T
-from torch_geometric.datasets import Planetoid, Amazon, Coauthor
-from torch_geometric.transforms import NormalizeFeatures
-from torch_geometric.data import Data
-from os import path
-from torch_sparse import SparseTensor
-from google_drive_downloader import GoogleDriveDownloader as gdd
-import networkx as nx
 import scipy.sparse as sp
+import torch
+import torch_geometric.transforms as T
+from google_drive_downloader import GoogleDriveDownloader as gdd
 from ogb.nodeproppred import NodePropPredDataset, PygNodePropPredDataset
-import os
-from torch_geometric.utils import subgraph, k_hop_subgraph, to_undirected
-import pickle as pkl
+from sklearn.preprocessing import label_binarize
+from torch_geometric.datasets import Amazon, Coauthor, Planetoid
+from torch_geometric.utils import subgraph
 
-from models.data_utils import rand_train_test_idx, \
-    even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
+from models.data_utils import (
+    class_rand_splits,
+    dataset_drive_url,
+    even_quantile_labels,
+    rand_train_test_idx,
+    to_sparse_tensor,
+)
 from models.order_utils import ordered_files
-import json
-import csv
 
 
-
-class NCDataset(object):
+class NCDataset:
     def __init__(self, name):
         """
         based off of ogb NodePropPredDataset
@@ -85,7 +84,7 @@ class NCDataset(object):
         return 1
 
     def __repr__(self):  
-        return '{}({})'.format(self.__class__.__name__, len(self))
+        return f'{self.__class__.__name__}({len(self)})'
 
 
 def load_dataset(data_dir, dataname, sub_dataname='', ):
@@ -653,7 +652,7 @@ def load_twitch_dataset(data_dir, lang):
     src = []
     targ = []
     uniq_ids = set()
-    with open(f"{filepath}/musae_{lang}_target.csv", 'r') as f:
+    with open(f"{filepath}/musae_{lang}_target.csv") as f:
         reader = csv.reader(f)
         next(reader)
         for row in reader:
@@ -665,13 +664,13 @@ def load_twitch_dataset(data_dir, lang):
                 node_ids.append(int(row[5]))
 
     node_ids = np.array(node_ids, dtype=np.int)
-    with open(f"{filepath}/musae_{lang}_edges.csv", 'r') as f:
+    with open(f"{filepath}/musae_{lang}_edges.csv") as f:
         reader = csv.reader(f)
         next(reader)
         for row in reader:
             src.append(int(row[0]))
             targ.append(int(row[1]))
-    with open(f"{filepath}/musae_{lang}_features.json", 'r') as f:
+    with open(f"{filepath}/musae_{lang}_features.json") as f:
         j = json.load(f)
     src = np.array(src)
     targ = np.array(targ)

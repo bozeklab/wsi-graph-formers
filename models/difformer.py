@@ -1,10 +1,9 @@
-import math,os
+
 import torch
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_sparse import SparseTensor, matmul
 from torch_geometric.utils import degree
+from torch_sparse import SparseTensor, matmul
 
 
 def full_attention_conv(qs, ks, vs, kernel, output_attn=False):
@@ -90,7 +89,7 @@ class DIFFormerConv(nn.Module):
                use_weight=True,
                graph_weight=-1,
                use_source=False):
-        super(DIFFormerConv, self).__init__()
+        super().__init__()
         self.Wk = nn.Linear(in_channels, out_channels * num_heads)
         self.Wq = nn.Linear(in_channels, out_channels * num_heads)
         if use_weight:
@@ -153,7 +152,7 @@ class DIFFormer(nn.Module):
     '''
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2, num_heads=1, kernel='simple',
                  alpha=0.5, dropout=0.5, use_bn=True, use_residual=True, use_weight=True, use_graph=True, graph_weight=-1, use_source=False):
-        super(DIFFormer, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.fcs = nn.ModuleList()
@@ -241,7 +240,7 @@ class DIFFormer_bin(nn.Module):
                  num_layers=2, num_heads=1, kernel='simple',
                  alpha=0.5, dropout=0.5, use_bn=True, use_residual=True, use_weight=True,
                  use_graph=True, graph_weight=-1, use_source=False):
-        super(DIFFormer_bin, self).__init__()
+        super().__init__()
 
         self.convs = nn.ModuleList()
         self.fcs = nn.ModuleList()

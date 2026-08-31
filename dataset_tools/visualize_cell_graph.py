@@ -2,22 +2,22 @@
 Lucas Sancéré 2025
 """
 
-import sys
-# sys.path.append('../')  # Only for Remote use on Cluste
-
-import networkx as nx
-import matplotlib.pyplot as plt
-import random
-from omegaconf import DictConfig
-import hydra
 import pickle
-from torch_geometric.utils import to_networkx
-from torch_geometric.data import Data
-import torch
+import random
 
-# import models.SGFormer.largewsi.data_utils as data_utils
-from models.dataset import load_dataset
-# --> need dataset and data_utils for torch.load (if graph saved as NDdataset class)
+import hydra
+import matplotlib.pyplot as plt
+
+# sys.path.append('../')  # Only for Remote use on Cluste
+import networkx as nx
+import torch
+from omegaconf import DictConfig
+from torch_geometric.data import Data
+from torch_geometric.utils import to_networkx
+
+# Imported for its side effect, not for use: torch.load needs the NCDataset
+# class to be importable to unpickle graphs saved in that format.
+from models.dataset import load_dataset  # noqa: F401
 
 
 DATASETCOLORS = [
@@ -191,7 +191,7 @@ def plot_pyg_graph(data, graphtype='dataset', max_nodes=1000, figsize=(10, 10), 
             for n in G.nodes
         ]
     else:
-        raise ValueError('Incorrect name for graphtype: "{}", It has to be dataset, binary or  infer'.format(graphtype))
+        raise ValueError(f'Incorrect name for graphtype: "{graphtype}", It has to be dataset, binary or  infer')
 
 
     plt.figure(figsize=figsize)

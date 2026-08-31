@@ -3,31 +3,30 @@ Lucas Sancéré 2025
 """
 
 import sys
+
 sys.path.append('../')  # Only for Remote use on Cluste
 
-import os
 import glob
 import json
-import numpy as np
-import networkx as nx
-from skimage.draw import polygon
-from skimage import measure
-from skimage.color import rgb2gray
-from skimage.feature import graycomatrix, graycoprops
-from skimage.util import img_as_ubyte
-from scipy.spatial import cKDTree
-from tqdm import tqdm
 import os
-from omegaconf import DictConfig
-import hydra
-from configs.schema import GraphConfig
 import pickle
-import time 
+import time
 from contextlib import contextmanager
 
-from PIL import Image
-import openslide 
+import hydra
+import networkx as nx
+import numpy as np
+import openslide
 import tifffile
+from omegaconf import DictConfig
+from PIL import Image
+from scipy.spatial import cKDTree
+from skimage import measure
+from skimage.color import rgb2gray
+from skimage.draw import polygon
+from skimage.feature import graycomatrix, graycoprops
+from skimage.util import img_as_ubyte
+from tqdm import tqdm
 
 
 @contextmanager
@@ -255,7 +254,7 @@ def build_graph_from_json(json_path,
         Graph with nodes containing morphology and type information.
     """
     with timing_block(timing, "Reading JSON"):
-        with open(json_path, 'r') as f:
+        with open(json_path) as f:
             data = json.load(f)
 
     cells = data.get("cells", data)

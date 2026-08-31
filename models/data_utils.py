@@ -1,13 +1,12 @@
-import os
 from collections import defaultdict
 
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
 from scipy import sparse as sp
-from sklearn.metrics import roc_auc_score, f1_score, balanced_accuracy_score
-
+from sklearn.metrics import balanced_accuracy_score, f1_score, roc_auc_score
 from torch_sparse import SparseTensor
+
 #from google_drive_downloader import GoogleDriveDownloader as gdd
 
 
@@ -47,7 +46,7 @@ def load_fixed_splits(data_dir, dataset, name, protocol):
         splits_lst.append(splits)
     elif name in ['cora', 'citeseer', 'pubmed', 'chameleon', 'squirrel', 'film', 'cornell', 'texas', 'wisconsin']:
         for i in range(10):
-            splits_file_path = '{}/geom-gcn/splits/{}'.format(data_dir, name) + '_split_0.6_0.2_'+str(i)+'.npz'
+            splits_file_path = f'{data_dir}/geom-gcn/splits/{name}' + '_split_0.6_0.2_'+str(i)+'.npz'
             splits = {}
             with np.load(splits_file_path) as splits_file:
                 splits['train'] = torch.BoolTensor(splits_file['train_mask'])
@@ -360,6 +359,8 @@ def adj_mul(adj_i, adj, N):
     return adj_j
 
 import subprocess
+
+
 def get_gpu_memory_map():
     """Get the current gpu usage.
     Returns
@@ -379,6 +380,8 @@ def get_gpu_memory_map():
     return gpu_memory
 
 import subprocess
+
+
 def get_gpu_memory_map():
     """Get the current gpu usage.
     Returns

@@ -1,29 +1,27 @@
+import glob
 import os
-import sys
-#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
-# sys.path.append('../../../') 
-
-import torch
-from collections import Counter
-
-from models.large_wsigraphs.parse import parse_method
-from models.large_wsigraphs.dataset import load_dataset
-from dataset_tools.simplify_graph import subgraph_filtering
 
 import hydra
+
+#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+# sys.path.append('../../../') 
+import torch
+from dataset import (
+    NCDataset,
+    load_dataset,
+)
 from omegaconf import DictConfig
-from hydra.core.hydra_config import HydraConfig
-from copy import deepcopy
-from tqdm import tqdm
-import glob
+from torch_geometric.data import Data  # for PyG v1.7
 
-from utils.graph_utils import fit_zscore_stats_pyg, normalize_zscore_pyg, \
-    append_celltype_onehot_pyg, normalize_encode_celltype_pyg, mask_on_graph_list, \
-    sanity_check_graph_list
-from dataset import load_dataset, load_dataset_extra, NCDataset, custom_fixed_split, \
-    custom_cv_split_train_test
-from torch_geometric.data import Batch , Data # for PyG v1.7
-
+from models.large_wsigraphs.dataset import load_dataset
+from models.large_wsigraphs.parse import parse_method
+from utils.graph_utils import (
+    append_celltype_onehot_pyg,
+    mask_on_graph_list,
+    normalize_encode_celltype_pyg,
+    normalize_zscore_pyg,
+    sanity_check_graph_list,
+)
 
 
 @hydra.main(config_path="../../configs/SGFormer", config_name="config_largewsi", version_base=None)
@@ -50,7 +48,7 @@ def infer(cfg: DictConfig):
     for fname in files:
         if os.path.exists(fname):
             if cfg.multi_graph_infer:
-                print("Runnning inference {} on {}".format(infcount,len(files)))
+                print(f"Runnning inference {infcount} on {len(files)}")
                 infcount += 1
                 filename = os.path.split(fname)[1]
                 infergraph = load_dataset(cfg.pred_input_dir, dataset_type, sub_dataname=filename)
@@ -96,7 +94,13 @@ def infer(cfg: DictConfig):
                 cont_idx = cont_idx + list(range(3, infergraph.x.shape[1]))  # all but centroid
 
                 # stats = fit_zscore_stats_pyg([infergraph], cont_idx=cont_idx, centroid_idx=centroid_idx, device=device)
-                stats = needtoloadfromtraining
+                raise NotImplementedError(
+                    "Inference with zscore_normalization=True is not implemented "
+                    "yet: the z-score statistics fitted on the training graphs are "
+                    "not persisted with the checkpoint, so they cannot be restored "
+                    "here. Run inference with zscore_normalization=False, or save "
+                    "the statistics at training time and load them at this point."
+                )
 
                 if cfg.celltype_asfeature:
 
@@ -270,7 +274,7 @@ def infer(cfg: DictConfig):
                     saving_path = cfg.pred_output_dir + \
                               f'predictions_{cfg.pred_output_name}_{noext_modelname}.pt'
                 torch.save(outputgraph, saving_path)
-                print("Inference saved here: {} \n\n".format(saving_path))
+                print(f"Inference saved here: {saving_path} \n\n")
 
 
 
