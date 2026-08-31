@@ -66,7 +66,7 @@ dev = [
 
 [tool.ruff]
 target-version = "py38"
-line-length = 90
+line-length = 90  # keep: E501 is off, but I001 still wraps imports at this width
 # Scoped to the code this repository authored. models/ is adapted from SGFormer
 # and restyling it would only make the diff against upstream harder to read.
 include = ["tests/**/*.py"]
@@ -76,11 +76,11 @@ select = ["E", "F", "W", "I", "UP", "B"]
 ignore = [
     "E501",   # line length
     "W291",   # trailing whitespace: almost all of it sits inside docstrings,
-    "W293",   #   where removing it would rewrite the string content itself
+    "W293",   # where removing it would rewrite the string content itself
     "B905",   # zip() without strict=: needs per-call-site review, deferred
     "B007",   # unused loop control variable: cosmetic
     "F403",   # `from models.gnns import *`: how parse.py is meant to work,
-    "F405",   #   unrolling it is a refactor, not a lint fix
+    "F405",   # unrolling it is a refactor, not a lint fix
     "E402",   # import after code: deliberate sys.path setup in several scripts
 ]
 
