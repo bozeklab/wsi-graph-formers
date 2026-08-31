@@ -27,7 +27,7 @@ dependencies = []
 
 
 [project.urls]
-Repository = "https://github.com/lucas-sancere/wsi-graph-formers-archive"
+Repository = "https://github.com/lucas-sancere/wsi-graph-formers"
 Paper = "https://arxiv.org/abs/2602.15783"
 Dataset = "https://doi.org/10.5281/zenodo.21415205"
 
