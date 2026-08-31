@@ -136,9 +136,7 @@ To **evaluate scalable Graph Transformers models** with subgraph evaluation  met
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py \
-experiments=<chosen_experiment> \
-data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ 
+python models/main-batch.py experiments=<chosen_experiment> data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ 
 ```
 
 <details>
@@ -156,10 +154,7 @@ To **evaluate other GNNs models** with subgraph evaluation  method for binary no
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py \
-experiments=WSI-Graphs_subgraphs_crossval_generalgnn \
-data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ \
-method=<chosen_method>
+python models/main-batch.py experiments=WSI-Graphs_subgraphs_crossval_generalgnn data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ method=<chosen_method>
 ```
 
 <details>
@@ -187,10 +182,7 @@ To **evaluate scalable Graph Transformers models** for binary node classificatio
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py \
-experiments=<chosen_experiment> \
-data_dir=data/TILE-Graphs/ \
-patient_csv=data/TILE_patients_ID.csv
+python models/main-batch.py experiments=<chosen_experiment> data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv
 ```
 
 <details>
@@ -208,11 +200,7 @@ To **evaluate other GNNs models** for binary node classification on TILE-Graphs 
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py \
-experiments=TILE-Graphs_crossval_generalgnn \
-data_dir=data/TILE-Graphs/ \
-patient_csv=data/TILE_patients_ID.csv \
-method=<chosen_method> 
+python models/main-batch.py experiments=TILE-Graphs_crossval_generalgnn data_dir=data/TILE-Graphs/ patient_csv=data/TILE_patients_ID.csv method=<chosen_method> 
 ```
 
 <details>
@@ -268,11 +256,7 @@ To reproduce feature ablation study for WSI-Graph **containing texture features*
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py \
-experiments=experiments_subgraphs_crossval_feature_ablation \
-data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ \
-zscore_normalization=<True/False> \
-celltype_asfeature=<True/False>
+python models/main-batch.py experiments=experiments_subgraphs_crossval_feature_ablation data_dir=data/WSI-Graph-100splits/3-max-hops-simplification/ zscore_normalization=<True/False> celltype_asfeature=<True/False>
 ```
 
 Choose False or True depending on which experiement (line of the table) you want to reproduce. To reproduce everything run all configurations.
@@ -281,12 +265,7 @@ To reproduce feature ablation study for WSI-Graph **without texture feature** wi
 
 ```bash
 conda activate wsi-graph-formers
-python models/main-batch.py \
-experiments=experiments_subgraphs_crossval_feature_ablation \
-data_dir=data/experiments/feature-ablations/subgraphs/ \
-order_file=data/experiments/feature-ablations/orders/notexture_order.txt \
-zscore_normalization=<True/False> \
-celltype_asfeature=<True/False>
+python models/main-batch.py experiments=experiments_subgraphs_crossval_feature_ablation data_dir=data/experiments/feature-ablations/subgraphs/ order_file=data/experiments/feature-ablations/orders/notexture_order.txt zscore_normalization=<True/False> celltype_asfeature=<True/False>
 ```
 
 Choose False or True depending on which experiement (line of the table) you want to reproduce. To reproduce everything run all configurations.
@@ -351,35 +330,25 @@ simplifiedgraph_folder=/path/to/simplifiedgraph_folder/
 ### Split
 
 ```bash
-python dataset_tools/split_graph.py \
-nbr_subgraphs=100 \
-simplifiedgraph_folder=/path/to/simplifiedgraph_folder/ \
-split_output_folder=/path/to/split_output_folder/ 
+python dataset_tools/split_graph.py nbr_subgraphs=100 simplifiedgraph_folder=/path/to/simplifiedgraph_folder/ split_output_folder=/path/to/split_output_folder/ 
 ```
 
 ## Visualize cell graphs
 
 The visualization might have to be done locally, to avoid activating GUI on remote clusters.
 
-
 **Visualize output of inference from binary classification**
 
 ```bash
 conda activate wsi-graph-formers
-python dataset_tools/visualize_cell_graph.py \ 
-backend=pyg \ 
-graphtype=binary \ 
-visualization_path=/path/to/file/to/visualize.pt
+python dataset_tools/visualize_cell_graph.py backend=pyg graphtype=binary visualization_path=/path/to/file/to/visualize.pt
 ```
 
 **Visualize dataset graph with pyg**
 
 ```bash
 conda activate wsi-graph-formers
-python dataset_tools/visualize_cell_graph.py \
-backend=pyg \
-graphtype=dataset \
-visualization_path=/path/to/file/to/visualize.pt
+python dataset_tools/visualize_cell_graph.py backend=pyg graphtype=dataset visualization_path=/path/to/file/to/visualize.pt
 ```
 
 ## Image Baseline
