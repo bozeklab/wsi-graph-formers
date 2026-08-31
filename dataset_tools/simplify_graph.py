@@ -16,7 +16,6 @@ from typing import Optional
 
 from omegaconf import DictConfig
 import hydra
-from configs.schema import GraphConfig
 
 
 

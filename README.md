@@ -10,8 +10,7 @@
 # Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers
 
 <div align="center">
-
-[Project presentation](#project-presentation) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [Citation](#citation)
+[Project presentation](#project-presentation) • [Project structure](#project-structure) • [Installation](#installation) •  [Datasets](#datasets) • [Node classification](#node-classification) • [Ablation study](#ablation-study) • [Generate your own cell graphs](#generate-your-own-cell-graphs) • [Visualize cell graphs](#visualize-cell-graphs)  • [Image Baseline](#image-baseline)  • [References and citation](#references-and-citation)
 
 </div>
 
@@ -19,27 +18,37 @@
 
 This repository contains the code for ["Context-aware Skin Cancer Epithelial Cell Classification with Scalable Graph Transformers"](https://arxiv.org/abs/2602.15783)  paper.
 
-## TO DO
-
-- add pyproject.toml at the project root that the pip install -e . indeed work BEFORE IT IS DONE run
-
-```bash
-export PYTHONPATH="~/Ada_Codes/wsi-graph-formers-archive/src:$PYTHONPATH"
-```
-
-- remove SGFormer readme in models no?
-
 ## Project presentation 
 
-To write 
-
-Add the fact it is highly inspired from SGFormer repository and give link to it. 
+In this project, we generate cell graphs from Whole Slide Images of patients with cancer (cSCC here). Each node of the graph represents a nucleus and contain node features that encode nucleus morphology and texture. Each node also has a label corresponding to its cell type. Once such graphs are generated, tumor detection become a binary node classification on epithelial nodes, to classify such nodes as healthy or tumor.  Generated graphs reach half to several millions of nodes, so standard Graph Transformers with quadratic complexity could not be trained on them. We then benchmark scalable Graph Transformers (SGFormer, NodeFormer, DIFFormer) against classic GNNs (GCN, GAT, SGC, SGC-MLP, SIGN) on our two released datasets, WSI-Graph and TILE-Graphs. 
 
 
 ## Project structure
 
 ```bash
-Tree with #explanations (short)   
+wsi-graph-formers/
+│
+├── configs/                          # all Hydra configs
+│   ├── config.yaml                   # for dataset_tools/ and baseline_tools/
+│   ├── orders/                       # file orderings to reproduce the paper splits
+│   └── Graph_Transformers/
+│       ├── config_largewsi.yaml      # main config for models/
+│       └── experiments/              # one yaml per paper experiment
+│
+├── dataset_tools/                    # build, convert, simplify, split and visualize cell graphs
+├── models/                           # models, training, evaluation, inference
+├── utils/                            # features preprocessing, cross-validation splits
+├── baseline_tools/                   # prepare the image baseline datasets
+│   ├── cellvit/
+│   └── hovernet/
+├── docs/                             # figures of this README
+├── environment.yaml                  # conda environment
+├── pyproject.toml                    # makes the repo importable with `pip install -e .`
+├── download_data_classification.sh
+├── download_data_experiments.sh
+├── Baseline.md                       # image baselines documentation
+├── LICENSE.md
+└── README.md
 ```
 
 ## Installation
@@ -346,8 +355,11 @@ python dataset_tools/visualize_cell_graph.py backend=pyg graphtype=dataset visua
 
 Information about the generation and training of image baseline datasets is available on `Baseline.md` file.
 
+## References and citation
 
-## Citation
+The model and training code is partially built upon [SGFormer repository](https://github.com/qitianwu/SGFormer) (NeurIPS 2023). The main updates performed are the cell graph datasets and loaders,  the main additions are the masked binary node classification task, subgraph mini-batch training, patient-aware cross-validation, and the switch from `argparse` to Hydra.
+
+To cite our paper: 
 
 ```
 @misc{sancéré2026contextawareskincancerepithelial,

@@ -16,7 +16,6 @@ from typing import Dict
 
 from omegaconf import DictConfig
 import hydra
-from configs.schema import GraphConfig
 
 from models.dataset import NCDataset
 

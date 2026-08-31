@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "wsi-graph-formers"
+version = "0.1.0"
+description = "Context-aware skin cancer epithelial cell classification with scalable graph transformers"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE.md" }
+authors = [
+    { name = "Lucas Sancere" },
+    { name = "Noemie Moreau" },
+    { name = "Katarzyna Bozek" },
+]
+keywords = [
+    "computational-pathology",
+    "whole-slide-images",
+    "cell-graphs",
+    "graph-transformers",
+    "node-classification",
+    "skin-cancer",
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Operating System :: POSIX :: Linux",
+]
+
+# Runtime dependencies are deliberately left empty.
+#
+# They are pinned in `environment.yaml`, which is the only supported way to
+# install them: torch 1.9.0+cu111 / torch-scatter / torch-sparse are served from
+# the PyTorch and PyG wheel indexes, not from PyPI, so listing them here would
+# make `pip install -e .` try to re-resolve (and break) an already working conda
+# environment. Create the environment first, then run `pip install -e .`.
+dependencies = []
+
+
+[project.urls]
+Repository = "https://github.com/lucas-sancere/wsi-graph-formers-archive"
+Paper = "https://arxiv.org/abs/2602.15783"
+Dataset = "https://doi.org/10.5281/zenodo.21415205"
+
+
+# ---------------------------------------------------------------------------
+# Packaging
+# ---------------------------------------------------------------------------
+# The repository uses a flat layout: every importable package sits directly at
+# the repository root. Auto-discovery cannot be used here (several top-level
+# directories, plus non-package ones such as `data/`, `docs/`, `checkpoints/`),
+# so the package list is given explicitly.
+#
+# Declaring `package-dir = {"" = "."}` together with this flat, one-to-one
+# layout makes `pip install -e .` install a simple `.pth` file pointing at the
+# repository root. This is the exact equivalent of exporting the repository
+# root on PYTHONPATH, and it is what allows `python models/main-batch.py` to
+# resolve `configs.*`, `utils.*` and `dataset_tools.*` from anywhere.
+
+[tool.setuptools]
+package-dir = { "" = "." }
+packages = [
+    "models",
+    "utils",
+    "dataset_tools",
+    "configs",
+    "configs.Graph_Transformers",
+    "baseline_tools",
+    "baseline_tools.cellvit",
+    "baseline_tools.hovernet",
+]
+
+# Ship the Hydra configs and the split-order files alongside the code, so that a
+# non-editable install (`pip install .`) is usable too.
+[tool.setuptools.package-data]
+"configs" = ["*.yaml", "orders/*.txt"]
+"configs.Graph_Transformers" = ["*.yaml", "experiments/*.yaml"]
+"baseline_tools.cellvit" = ["*.yaml"]

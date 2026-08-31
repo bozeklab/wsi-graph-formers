@@ -21,7 +21,6 @@ import tifffile
 from omegaconf import DictConfig
 import hydra
 from hydra.utils import to_absolute_path
-from configs.schema import GraphConfig
 
 
 log = logging.getLogger(__name__)
