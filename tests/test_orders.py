@@ -6,8 +6,8 @@ that behaviour down.
 """
 
 import pytest
-from conftest import tracked_matching
 
+from conftest import tracked_matching
 from models.order_utils import ordered_files
 
 ORDERS = tracked_matching("configs/orders/*.txt")
