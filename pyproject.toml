@@ -15,22 +15,6 @@ authors = [
     { name = "Noemie Moreau" },
     { name = "Katarzyna Bozek" },
 ]
-keywords = [
-    "computational-pathology",
-    "whole-slide-images",
-    "cell-graphs",
-    "graph-transformers",
-    "node-classification",
-    "skin-cancer",
-]
-classifiers = [
-    "Intended Audience :: Science/Research",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Topic :: Scientific/Engineering :: Medical Science Apps.",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Operating System :: POSIX :: Linux",
-]
 
 # Runtime dependencies are deliberately left empty.
 #
@@ -48,20 +32,7 @@ Paper = "https://arxiv.org/abs/2602.15783"
 Dataset = "https://doi.org/10.5281/zenodo.21415205"
 
 
-# ---------------------------------------------------------------------------
 # Packaging
-# ---------------------------------------------------------------------------
-# The repository uses a flat layout: every importable package sits directly at
-# the repository root. Auto-discovery cannot be used here (several top-level
-# directories, plus non-package ones such as `data/`, `docs/`, `checkpoints/`),
-# so the package list is given explicitly.
-#
-# Declaring `package-dir = {"" = "."}` together with this flat, one-to-one
-# layout makes `pip install -e .` install a simple `.pth` file pointing at the
-# repository root. This is the exact equivalent of exporting the repository
-# root on PYTHONPATH, and it is what allows `python models/main-batch.py` to
-# resolve `configs.*`, `utils.*` and `dataset_tools.*` from anywhere.
-
 [tool.setuptools]
 package-dir = { "" = "." }
 packages = [
