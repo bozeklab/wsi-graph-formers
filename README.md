@@ -1,7 +1,7 @@
 
 <div align="center">
 
-[![tests](https://github.com/ORG/wsi-graph-formers/actions/workflows/test.yml/badge.svg)](https://github.com/ORG/wsi-graph-formers/actions/workflows/test.yml)
+[![tests](https://github.com/bozeklab/wsi-graph-formers/actions/workflows/test.yml/badge.svg)](https://github.com/ORG/wsi-graph-formers/actions/workflows/test.yml)
 [![arXiv](https://img.shields.io/badge/arXiv-2602.15783-b31b1b.svg)](https://arxiv.org/abs/2602.15783)
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 
