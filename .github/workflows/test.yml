@@ -1,0 +1,48 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# a new push to the same branch cancels the previous run
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: checks (python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # the version environment.yaml pins; 3.8 is unavailable on ubuntu-24.04
+          - os: ubuntu-22.04
+            python-version: "3.8"
+          # guards against syntax that would break on a modern interpreter
+          - os: ubuntu-latest
+            python-version: "3.11"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Check the editable install exposes the packages
+        run: python -c "import configs, utils, dataset_tools, models; print('imports OK')"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        run: pytest -q
