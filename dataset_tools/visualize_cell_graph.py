@@ -19,7 +19,6 @@ from torch_geometric.utils import to_networkx
 # class to be importable to unpickle graphs saved in that format.
 from models.dataset import load_dataset  # noqa: F401
 
-
 DATASETCOLORS = [
     (0, 0, 0),             # 0 - Background (black)  
     (1.0, 1.0, 0.0),       # 1 - Granulocyte (yellow)  

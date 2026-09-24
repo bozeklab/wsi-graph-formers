@@ -100,7 +100,7 @@ def simplify_graph(input_path: str, max_hops: Optional[int] = 3) -> Data:
     subgraph = subgraph_filtering(graph, classified_nodes, filtering_step=1)
 
     # If max_hops is None → return after background removal
-    if str(max_hops) is "Inf":
+    if str(max_hops) == "Inf":
         return subgraph
 
     else:

@@ -136,13 +136,13 @@ def main(cfg: DictConfig):
 
     # create limit index for the loop
     if cfg.cv:
-        l = cfg.k_folds
+        n_folds = cfg.k_folds
     else:
-        l= 1
+        n_folds = 1
 
 
     # we plan a loop for cv, but if not cv there will be only one run
-    for testfold_idx in range(0,l):
+    for testfold_idx in range(0, n_folds):
 
         #### get the splits for all runs
         if cfg.cv:
@@ -433,7 +433,7 @@ def main(cfg: DictConfig):
             intersection1 = train_ids & valid_ids
             intersection2 = valid_ids & test_ids
 
-        print(f"Sanity check: are splits fully separated:")
+        print("Sanity check: are splits fully separated:")
         if not cfg.cv: 
             print(f"\nOverlap between train and valid: {len(intersection1)} nodes")
             print(f"\nOverlap between valid and test: {len(intersection2)} nodes")

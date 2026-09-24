@@ -714,13 +714,16 @@ class GCN_bin(nn.Module):
         self.use_bn = use_bn
 
     def reset_parameters(self):
-        for c in self.convs: c.reset_parameters()
-        for b in self.bns: b.reset_parameters()
+        for c in self.convs:
+            c.reset_parameters()
+        for b in self.bns:
+            b.reset_parameters()
 
     def forward(self, x, edge_index):
         for i, conv in enumerate(self.convs[:-1]):
             x = conv(x, edge_index)
-            if self.use_bn: x = self.bns[i](x)
+            if self.use_bn:
+                x = self.bns[i](x)
             x = self.activation(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
         return self.convs[-1](x, edge_index)
@@ -743,14 +746,17 @@ class GAT_bin(nn.Module):
         self.use_bn = use_bn
 
     def reset_parameters(self):
-        for c in self.convs: c.reset_parameters()
-        for b in self.bns: b.reset_parameters()
+        for c in self.convs:
+            c.reset_parameters()
+        for b in self.bns:
+            b.reset_parameters()
 
     def forward(self, x, edge_index):
         x = F.dropout(x, p=self.dropout, training=self.training)
         for i, conv in enumerate(self.convs[:-1]):
             x = conv(x, edge_index)
-            if self.use_bn: x = self.bns[i](x)
+            if self.use_bn:
+                x = self.bns[i](x)
             x = self.activation(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
         return self.convs[-1](x, edge_index)
@@ -767,7 +773,8 @@ class SGCMem_bin(nn.Module):
 
     def reset_parameters(self):
         self.lin.reset_parameters()
-        if self.use_bn: self.bn.reset_parameters()
+        if self.use_bn:
+            self.bn.reset_parameters()
 
     def forward(self, x, edge_index):
         n = x.shape[0]
@@ -800,8 +807,10 @@ class SGC2_bin(nn.Module):
         self.use_bn = use_bn
 
     def reset_parameters(self):
-        for lin in self.lins: lin.reset_parameters()
-        for bn in self.bns: bn.reset_parameters()
+        for lin in self.lins:
+            lin.reset_parameters()
+        for bn in self.bns:
+            bn.reset_parameters()
 
     def forward(self, x, edge_index):
         n = x.shape[0]
@@ -813,7 +822,8 @@ class SGC2_bin(nn.Module):
             x = matmul(adj_t, x)
         for i, lin in enumerate(self.lins[:-1]):
             x = lin(x)
-            if self.use_bn: x = self.bns[i](x)
+            if self.use_bn:
+                x = self.bns[i](x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
         return self.lins[-1](x)
@@ -834,8 +844,10 @@ class SIGN_bin(nn.Module):
         self.use_bn = use_bn
 
     def reset_parameters(self):
-        for lin in self.lins: lin.reset_parameters()
-        for bn in self.bns: bn.reset_parameters()
+        for lin in self.lins:
+            lin.reset_parameters()
+        for bn in self.bns:
+            bn.reset_parameters()
 
     def forward(self, x, edge_index):
         N = x.shape[0]
@@ -856,7 +868,8 @@ class SIGN_bin(nn.Module):
 
         for i, lin in enumerate(self.lins[:-1]):
             x = lin(x)
-            if self.use_bn: x = self.bns[i](x)
+            if self.use_bn:
+                x = self.bns[i](x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
         return self.lins[-1](x)

@@ -332,7 +332,7 @@ def stage_a_bin_instances_to_tiles(
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     # LRU of open file handles: key=(tx,ty) -> file object
-    open_fhs: "OrderedDict[Tuple[int,int], Any]" = OrderedDict()
+    open_fhs: OrderedDict[Tuple[int,int], Any] = OrderedDict()
 
     def get_writer(tx: int, ty: int):
         """Return an open file handle for (tx,ty), respecting the LRU cap."""

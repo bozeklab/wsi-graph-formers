@@ -42,7 +42,7 @@ def create_projection_matrix(m, d, seed=0, scaling=0, struct_mode=False):
     elif scaling == 1:
         multiplier = torch.sqrt(torch.tensor(float(d))) * torch.ones(m)
     else:
-        raise ValueError("Scaling must be one of {0, 1}. Was %s" % scaling)
+        raise ValueError(f"Scaling must be one of {{0, 1}}. Was {scaling}")
 
     return torch.matmul(torch.diag(multiplier), final_matrix)
 

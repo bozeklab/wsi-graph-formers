@@ -85,4 +85,4 @@ def save_result(args, results):
         write_obj.write(
             f"{args.method} " + f"{args.kernel}: " + f"{args.weight_decay} " + f"{args.dropout} " + \
             f"{args.num_layers} " + f"{args.alpha}: " + f"{args.hidden_channels}: " + \
-            f"{results.mean():.2f} $\pm$ {results.std():.2f} \n")
+            f"{results.mean():.2f} $\\pm$ {results.std():.2f} \n")

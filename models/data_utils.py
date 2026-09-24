@@ -379,7 +379,6 @@ def get_gpu_memory_map():
     # gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
     return gpu_memory
 
-import subprocess
 
 
 def get_gpu_memory_map():

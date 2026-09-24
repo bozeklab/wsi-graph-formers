@@ -23,7 +23,7 @@ def ordered_files(data_folder, order_file=None, ext=".pt"):
         return sorted(present)
 
     with open(order_file) as fh:
-        order = [l.strip() for l in fh if l.strip().endswith(ext)]
+        order = [line.strip() for line in fh if line.strip().endswith(ext)]
 
     seen = set()
     duplicates = {f for f in order if f in seen or seen.add(f)}

@@ -35,3 +35,7 @@ configs/SGFormer/experiment/
 Data_General/
 models-arxiv/
 models/large_wsigraphs/run.sh
+
+# Cache
+.pytest_cache/
+.ruff_cache/
