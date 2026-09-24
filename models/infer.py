@@ -11,10 +11,9 @@ from dataset import (
     load_dataset,
 )
 from omegaconf import DictConfig
+from parse import parse_method
 from torch_geometric.data import Data  # for PyG v1.7
 
-from models.large_wsigraphs.dataset import load_dataset
-from models.large_wsigraphs.parse import parse_method
 from utils.graph_utils import (
     append_celltype_onehot_pyg,
     mask_on_graph_list,
@@ -23,8 +22,7 @@ from utils.graph_utils import (
     sanity_check_graph_list,
 )
 
-
-@hydra.main(config_path="../../configs/SGFormer", config_name="config_largewsi", version_base=None)
+@hydra.main(config_path="../configs/Graph_Transformers", config_name="config_largewsi", version_base=None)
 def infer(cfg: DictConfig):
 
     # Print hydra overrides
@@ -107,7 +105,7 @@ def infer(cfg: DictConfig):
                     ## Add cell type as a feature after normalization###
                     graph = normalize_encode_celltype_pyg(
                                                   infergraph, 
-                                                  stats, 
+                                                  stats,  # noqa: F821
                                                   cont_idx=cont_idx,
                                                   gamma=cfg.gamma,
                                                   centroid_idx=centroid_idx,
@@ -118,7 +116,7 @@ def infer(cfg: DictConfig):
                     # Apply the *same* stats to every split
                     graph = normalize_zscore_pyg(
                                                 infergraph, 
-                                                stats, 
+                                                stats,  # noqa: F821
                                                 cont_idx=cont_idx,
                                                 centroid_idx=centroid_idx,
                                                 normalize_centroid=None

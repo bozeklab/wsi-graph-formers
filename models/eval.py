@@ -108,7 +108,7 @@ def evaluate_wloader(model,
             # for most of the models:
             logits = model(batch.x, batch.edge_index)
 
-        out = F.log_softmax(out, dim=1)
+        out = F.log_softmax(logits, dim=1)
        
         #target = batch.label.to(torch.float)
         #target = batch.label.squeeze.to(torch.long)
@@ -281,7 +281,6 @@ def evaluate_binmasked_wloader(model,
 
 
 
-# WORK IN PROGRESS !!!!!!!! ********************
 @torch.no_grad()
 def evaluate_binmasked_infer(pred_input_dir,
                              pred_output_dir,
@@ -448,13 +447,13 @@ def evaluate_batch(model, dataset, split_idx, args, device, n, true_label):
 
             out_i = model(x_i, edge_index_i)
 
-            cur_train_total, cur_train_correct=eval_acc(y_i[train_mask_i], out_i[train_mask_i])
+            cur_train_total, cur_train_correct=eval_acc_counts(y_i[train_mask_i], out_i[train_mask_i])
             train_total+=cur_train_total
             train_correct+=cur_train_correct
-            cur_valid_total, cur_valid_correct=eval_acc(y_i[valid_mask_i], out_i[valid_mask_i])
+            cur_valid_total, cur_valid_correct=eval_acc_counts(y_i[valid_mask_i], out_i[valid_mask_i])
             valid_total+=cur_valid_total
             valid_correct+=cur_valid_correct
-            cur_test_total, cur_test_correct=eval_acc(y_i[test_mask_i], out_i[test_mask_i])
+            cur_test_total, cur_test_correct=eval_acc_counts(y_i[test_mask_i], out_i[test_mask_i])
             test_total+=cur_test_total
             test_correct+=cur_test_correct
 
@@ -470,7 +469,7 @@ def evaluate_batch(model, dataset, split_idx, args, device, n, true_label):
 
     return train_acc, valid_acc, test_acc, 0, None
 
-def eval_acc(true, pred):
+def eval_acc_counts(true, pred):
     '''
     true: (n, 1)
     pred: (n, c)

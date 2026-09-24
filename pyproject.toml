@@ -82,6 +82,8 @@ ignore = [
     "F403",   # `from models.gnns import *`: how parse.py is meant to work,
     "F405",   # unrolling it is a refactor, not a lint fix
     "E402",   # import after code: deliberate sys.path setup in several scripts
+    "F841",   # unused local variable: mostly leftover debris
+    "E722",   # bare except: only in load_pokec_mat, upstream code this project never runs
 ]
 
 [tool.ruff.lint.isort]
