@@ -69,7 +69,7 @@ target-version = "py38"
 line-length = 90  # keep: E501 is off, but I001 still wraps imports at this width
 # Scoped to the code this repository authored. models/ is adapted from SGFormer
 # and restyling it would only make the diff against upstream harder to read.
-include = ["tests/**/*.py"]
+include = ["**/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]

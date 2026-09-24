@@ -22,6 +22,7 @@ from utils.graph_utils import (
     sanity_check_graph_list,
 )
 
+
 @hydra.main(config_path="../configs/Graph_Transformers", config_name="config_largewsi", version_base=None)
 def infer(cfg: DictConfig):
 
