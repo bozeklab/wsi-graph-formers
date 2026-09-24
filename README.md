@@ -1,6 +1,7 @@
 
 <div align="center">
 
+[![tests](https://github.com/lucas-sancere/wsi-graph-formers/actions/workflows/test.yml/badge.svg)](https://github.com/lucas-sancere/wsi-graph-formers/actions/workflows/test.yml)
 [![arXiv](https://img.shields.io/badge/arXiv-2602.15783-b31b1b.svg)](https://arxiv.org/abs/2602.15783)
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 
@@ -85,7 +86,8 @@ python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 
 ### Tested on
 
-Linux x86-64.
+Linux x86-64 (Ubuntu 20.04)
+
 GPU: CUDA 11.1 on an NVIDIA A100 (sm_80) — imports and CUDA ops.
 CPU-only: imports only, on a GPU-less node.
 Other platforms have not been tested.
